@@ -52,7 +52,8 @@ html,body{
     transition:opacity .25s;
     pointer-events:none;
 }
-#start{
+#start,
+#pauseMenu{
     position:fixed;
     inset:0;
     z-index:100;
@@ -62,33 +63,133 @@ html,body{
     flex-direction:column;
     background:
         radial-gradient(circle at center,
-        rgba(30,50,60,.2),
-        rgba(0,0,0,.94));
+        rgba(30,50,60,.22),
+        rgba(0,0,0,.95));
     color:#fff;
 }
-#start h1{
-    margin:0;
-    font-size:58px;
-    letter-spacing:10px;
+
+#pauseMenu{
+    display:none;
+    z-index:150;
+    backdrop-filter:blur(5px);
+}
+
+.menu-panel{
+    width:min(430px,90vw);
+    padding:38px 42px;
+    border:1px solid rgba(255,255,255,.2);
+    background:rgba(8,12,16,.78);
+    box-shadow:0 20px 80px rgba(0,0,0,.55);
+    border-radius:12px;
     text-align:center;
 }
-#start p{
-    color:#bbb;
-    margin:15px 0 25px;
+
+#start h1,
+#pauseMenu h1{
+    margin:0 0 8px;
+    font-size:52px;
+    letter-spacing:9px;
+    text-align:center;
 }
-button{
-    padding:13px 30px;
-    margin:5px;
-    background:rgba(255,255,255,.08);
-    border:1px solid #fff;
+
+#pauseMenu h1{
+    font-size:34px;
+    letter-spacing:5px;
+}
+
+.menu-subtitle{
+    color:#aaa;
+    margin:0 0 25px;
+    font-size:13px;
+}
+
+.menu-button{
+    display:block;
+    width:100%;
+    padding:14px 20px;
+    margin:9px 0;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.25);
     color:#fff;
     cursor:pointer;
-    border-radius:5px;
+    border-radius:6px;
+    font-size:15px;
+    transition:.15s;
 }
-button:hover{
+
+.menu-button:hover{
     background:#fff;
     color:#000;
+    transform:translateY(-1px);
 }
+
+.menu-button.danger:hover{
+    background:#b33;
+    border-color:#b33;
+    color:#fff;
+}
+
+#settingsPanel{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:180;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,.82);
+    backdrop-filter:blur(7px);
+}
+
+.settings-panel{
+    width:min(520px,92vw);
+    max-height:90vh;
+    overflow:auto;
+    padding:30px;
+    background:#10161b;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:12px;
+    color:white;
+}
+
+.settings-panel h2{
+    margin-top:0;
+    letter-spacing:3px;
+}
+
+.setting-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:20px;
+    padding:14px 0;
+    border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.setting-row label{
+    color:#ddd;
+}
+
+.setting-row select,
+.setting-row input[type="range"]{
+    width:190px;
+}
+
+.setting-value{
+    min-width:42px;
+    text-align:right;
+    color:#aaa;
+}
+
+.settings-actions{
+    display:flex;
+    gap:10px;
+    margin-top:22px;
+}
+
+.settings-actions .menu-button{
+    margin:0;
+}
+
 #loading{
     position:fixed;
     inset:0;
@@ -98,6 +199,83 @@ button:hover{
     justify-content:center;
     color:white;
     background:#000;
+}
+
+/* Developer console */
+#devConsole{
+    position:fixed;
+    left:18px;
+    bottom:18px;
+    width:min(560px, calc(100vw - 36px));
+    max-height:46vh;
+    z-index:10000;
+    display:none;
+    font-family:Consolas,monospace;
+    background:rgba(8,12,16,.94);
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:10px;
+    box-shadow:0 10px 35px rgba(0,0,0,.45);
+    color:#d9f5d0;
+    overflow:hidden;
+}
+#devConsole.open{display:block;}
+#devConsoleHeader{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:9px 12px;
+    background:rgba(255,255,255,.06);
+    font-weight:700;
+}
+#devConsoleOutput{
+    height:180px;
+    overflow:auto;
+    padding:10px 12px;
+    white-space:pre-wrap;
+    font-size:12px;
+    line-height:1.45;
+}
+#devConsoleForm{
+    display:flex;
+    gap:8px;
+    padding:10px;
+    border-top:1px solid rgba(255,255,255,.1);
+}
+#devConsoleInput{
+    flex:1;
+    min-width:0;
+    background:#101820;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:6px;
+    padding:8px 10px;
+    font:inherit;
+    outline:none;
+}
+#devConsoleForm button{
+    background:#2f7d32;
+    color:white;
+    border:0;
+    border-radius:6px;
+    padding:8px 13px;
+    cursor:pointer;
+    font:inherit;
+}
+
+#fatalStartupError{
+    display:none;
+    position:fixed;
+    left:20px;
+    right:20px;
+    bottom:20px;
+    z-index:99999;
+    padding:14px 16px;
+    background:rgba(80,8,8,.96);
+    color:#fff;
+    border:1px solid rgba(255,140,140,.6);
+    border-radius:8px;
+    font:13px/1.5 Consolas,monospace;
+    white-space:pre-wrap;
 }
 </style>
 </head>
@@ -118,15 +296,133 @@ button:hover{
 <div id="status"></div>
 
 <div id="start">
-    <h1>INFINITE FRONTIER</h1>
-    <p>Procedural exploration • Forest • Desert • Snow</p>
-    <div>
-        <button id="enter">ENTER WORLD</button>
-        <button id="loadStart">LOAD SAVE</button>
+    <div class="menu-panel">
+        <h1>INFINITE FRONTIER</h1>
+        <p class="menu-subtitle">
+            Procedural exploration • Forest • Desert • Snow
+        </p>
+
+        <button class="menu-button" id="enter">
+            PLAY GAME
+        </button>
+
+        <button class="menu-button" id="loadStart">
+            LOAD WORLD
+        </button>
+
+        <button class="menu-button" id="mainSettings">
+            SETTINGS
+        </button>
+
+        <button class="menu-button danger" id="quitGame">
+            QUIT GAME
+        </button>
+    </div>
+</div>
+
+<div id="pauseMenu">
+    <div class="menu-panel">
+        <h1>PAUSED</h1>
+        <p class="menu-subtitle">INFINITE FRONTIER</p>
+
+        <button class="menu-button" id="resumeGame">
+            RESUME GAME
+        </button>
+
+        <button class="menu-button" id="pauseSave">
+            SAVE WORLD
+        </button>
+
+        <button class="menu-button" id="pauseLoad">
+            LOAD WORLD
+        </button>
+
+        <button class="menu-button" id="pauseSettings">
+            GRAPHICS & SETTINGS
+        </button>
+
+        <button class="menu-button" id="mainMenu">
+            MAIN MENU
+        </button>
+    </div>
+</div>
+
+<div id="settingsPanel">
+    <div class="settings-panel">
+        <h2>SETTINGS</h2>
+
+        <div class="setting-row">
+            <label for="quality">Graphics Quality</label>
+            <select id="quality">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+                <option value="ultra">Ultra</option>
+            </select>
+        </div>
+
+        <div class="setting-row">
+            <label for="resolutionScale">Resolution Scale</label>
+            <div>
+                <input id="resolutionScale"
+                       type="range"
+                       min="50"
+                       max="100"
+                       step="10"
+                       value="100">
+                <span class="setting-value" id="resolutionValue">100%</span>
+            </div>
+        </div>
+
+        <div class="setting-row">
+            <label for="viewDistance">View Distance</label>
+            <div>
+                <input id="viewDistance"
+                       type="range"
+                       min="1"
+                       max="5"
+                       step="1"
+                       value="2">
+                <span class="setting-value" id="viewDistanceValue">3</span>
+            </div>
+        </div>
+
+        <div class="setting-row">
+            <label for="shadows">Shadows</label>
+            <select id="shadows">
+                <option value="on" selected>On</option>
+                <option value="off">Off</option>
+            </select>
+        </div>
+
+        <div class="setting-row">
+            <label for="fog">Distance Fog</label>
+            <select id="fog">
+                <option value="on" selected>On</option>
+                <option value="off">Off</option>
+            </select>
+        </div>
+
+        <div class="settings-actions">
+            <button class="menu-button" id="closeSettings">
+                BACK
+            </button>
+            <button class="menu-button" id="applySettings">
+                APPLY
+            </button>
+        </div>
     </div>
 </div>
 
 <div id="loading">GENERATING WORLD...</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js"
+  }
+}
+</script>
 
 <script type="module">
 
@@ -142,10 +438,10 @@ import { PointerLockControls } from
 // ============================================================
 
 const CHUNK_SIZE = 100;
-const VIEW_DISTANCE = 3;
+let VIEW_DISTANCE = 1;
 const WORLD_SEED = 918273645;
 
-const PLAYER_HEIGHT = 2;
+const PLAYER_HEIGHT = 2.65;
 const WALK_SPEED = 8;
 const SPRINT_SPEED = 15;
 
@@ -153,9 +449,59 @@ const chunks = new Map();
 const npcs = [];
 const generatedNPCIds = new Set();
 
+// World collision data. Each chunk owns its colliders so unloading a
+// chunk also removes its collision geometry.
+const chunkColliders = new Map();
+
+const PLAYER_RADIUS = 0.42;
+
 let flashlightOn = false;
 let gameStarted = false;
 let worldTime = 8.0;
+
+let cloudLayer = null;
+let cloudMaterials = [];
+
+let sunMesh = null;
+let moonMesh = null;
+let starField = null;
+let stars = null;
+let grassField = null;
+let grassMaterials = [];
+let cloudTexture = null;
+let cloudMaterial = null;
+
+// Real audio files placed in ./audio/
+const AUDIO_FILES = {
+    forestFootstep: "./audio/forest_footstep.mp3",
+    desertFootstep: "./audio/desert_footstep.mp3",
+    snowFootstep: "./audio/snow_footstep.mp3",
+
+    forestAmbience: "./audio/forest_ambience.mp3",
+    desertAmbience: "./audio/desert_ambience.mp3",
+    snowAmbience: "./audio/snow_ambience.mp3",
+
+    nightAmbience: "./audio/night_ambience.mp3"
+};
+
+const GAME_AUDIO = {};
+let currentAmbience = null;
+let audioStarted = false;
+let footstepTimer = 0;
+let lastAudioBiome = null;
+
+let gamePaused = false;
+
+let developerMode = false;
+let developerSpeedMultiplier = 1.0;
+let developerGodMode = false;
+
+let settingsReturn = "main";
+let rendererQuality = "medium";
+let resolutionScale = 1.0;
+let viewDistanceSetting = 2;
+let shadowsEnabled = true;
+let fogEnabled = true;
 
 let lastTime = performance.now();
 
@@ -170,8 +516,8 @@ scene.background = new THREE.Color(0x86b9dc);
 
 scene.fog = new THREE.Fog(
     0x86b9dc,
-    120,
-    600
+    90,
+    360
 );
 
 
@@ -191,7 +537,7 @@ camera.position.set(
 
 const renderer =
     new THREE.WebGLRenderer({
-        antialias:true,
+        antialias:false,
         powerPreference:"high-performance"
     });
 
@@ -201,12 +547,12 @@ renderer.setSize(
 );
 
 renderer.setPixelRatio(
-    Math.min(devicePixelRatio,2)
+    Math.min(devicePixelRatio,1.25)
 );
 
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type =
-    THREE.PCFSoftShadowMap;
+    THREE.BasicShadowMap;
 
 renderer.outputColorSpace =
     THREE.SRGBColorSpace;
@@ -249,8 +595,8 @@ sun.position.set(
 
 sun.castShadow = true;
 
-sun.shadow.mapSize.width = 2048;
-sun.shadow.mapSize.height = 2048;
+sun.shadow.mapSize.width = 512;
+sun.shadow.mapSize.height = 512;
 
 sun.shadow.camera.left = -180;
 sun.shadow.camera.right = 180;
@@ -283,10 +629,10 @@ flashlight.position.set(
     0
 );
 
-flashlight.castShadow = true;
+flashlight.castShadow = false;
 
-flashlight.shadow.mapSize.width = 1024;
-flashlight.shadow.mapSize.height = 1024;
+flashlight.shadow.mapSize.width = 512;
+flashlight.shadow.mapSize.height = 512;
 
 camera.add(flashlight);
 
@@ -307,6 +653,10 @@ camera.add(flashlightTarget);
 flashlight.target =
     flashlightTarget;
 
+
+createCloudLayer();
+
+createSunMoon();
 
 // ============================================================
 // CONTROLS
@@ -376,6 +726,989 @@ function noise(x,z){
 
 
 // ============================================================
+// REAL GAME AUDIO
+// ============================================================
+
+function setupGameAudio(){
+
+    if(audioStarted)
+        return;
+
+    for(
+        const [name, path] of Object.entries(AUDIO_FILES)
+    ){
+
+        const audio =
+            new Audio(path);
+
+        audio.preload = "auto";
+
+        GAME_AUDIO[name] = audio;
+    }
+
+    GAME_AUDIO.forestAmbience.loop = true;
+    GAME_AUDIO.desertAmbience.loop = true;
+    GAME_AUDIO.snowAmbience.loop = true;
+    GAME_AUDIO.nightAmbience.loop = true;
+
+    GAME_AUDIO.forestAmbience.volume = 0;
+    GAME_AUDIO.desertAmbience.volume = 0;
+    GAME_AUDIO.snowAmbience.volume = 0;
+    GAME_AUDIO.nightAmbience.volume = 0;
+
+    audioStarted = true;
+}
+
+
+function playAudioFile(
+    audio,
+    volume = .5
+){
+
+    if(!audio)
+        return;
+
+    audio.volume = volume;
+
+    audio.currentTime = 0;
+
+    const promise =
+        audio.play();
+
+    if(promise && promise.catch){
+
+        promise.catch(
+            error => {
+
+                console.warn(
+                    "Audio could not play:",
+                    audio.src,
+                    error
+                );
+            }
+        );
+    }
+}
+
+
+function playFootstep(){
+
+    if(!audioStarted)
+        return;
+
+    const biome =
+        biomeAt(
+            camera.position.x,
+            camera.position.z
+        );
+
+    let sound = null;
+
+    if(biome === "desert"){
+
+        sound =
+            GAME_AUDIO.desertFootstep;
+
+    }else if(biome === "snow"){
+
+        sound =
+            GAME_AUDIO.snowFootstep;
+
+    }else{
+
+        sound =
+            GAME_AUDIO.forestFootstep;
+    }
+
+    playAudioFile(
+        sound,
+        .5
+    );
+}
+
+
+function stopAmbience(
+    audio
+){
+
+    if(!audio)
+        return;
+
+    audio.pause();
+    audio.currentTime = 0;
+}
+
+
+function setAmbience(
+    target
+){
+
+    if(!target || currentAmbience === target)
+        return;
+
+    if(currentAmbience){
+
+        currentAmbience.volume = 0;
+
+        stopAmbience(
+            currentAmbience
+        );
+    }
+
+    currentAmbience = target;
+
+    target.loop = true;
+    target.volume = .34;
+
+    const promise =
+        target.play();
+
+    if(promise && promise.catch){
+
+        promise.catch(
+            error => {
+
+                console.warn(
+                    "Ambient audio could not play:",
+                    target.src,
+                    error
+                );
+            }
+        );
+    }
+}
+
+
+function updateBiomeAudio(){
+
+    if(
+        !audioStarted ||
+        !gameStarted ||
+        gamePaused
+    )
+        return;
+
+    const biome =
+        biomeAt(
+            camera.position.x,
+            camera.position.z
+        );
+
+    if(
+        biome === lastAudioBiome &&
+        currentAmbience
+    )
+        return;
+
+    lastAudioBiome = biome;
+
+    if(biome === "desert"){
+
+        setAmbience(
+            GAME_AUDIO.desertAmbience
+        );
+
+    }else if(biome === "snow"){
+
+        setAmbience(
+            GAME_AUDIO.snowAmbience
+        );
+
+    }else{
+
+        setAmbience(
+            GAME_AUDIO.forestAmbience
+        );
+    }
+}
+
+
+function updateNightAudio(){
+
+    if(
+        !audioStarted ||
+        !gameStarted ||
+        gamePaused
+    )
+        return;
+
+    const sun =
+        Math.sin(
+            (worldTime / 24) *
+            Math.PI * 2 -
+            Math.PI / 2
+        );
+
+    const daylight =
+        THREE.MathUtils.clamp(
+            sun * .5 + .5,
+            0,
+            1
+        );
+
+    const night =
+        1 - daylight;
+
+    const nightAudio =
+        GAME_AUDIO.nightAmbience;
+
+    nightAudio.volume =
+        .42 * night;
+
+    if(
+        night > .2 &&
+        nightAudio.paused
+    ){
+
+        const promise =
+            nightAudio.play();
+
+        if(promise && promise.catch)
+            promise.catch(() => {});
+    }
+
+    if(
+        night <= .2 &&
+        !nightAudio.paused
+    ){
+
+        nightAudio.pause();
+        nightAudio.currentTime = 0;
+    }
+}
+
+
+function updateGameAudio(delta){
+
+    if(
+        !audioStarted ||
+        !gameStarted ||
+        gamePaused
+    )
+        return;
+
+    updateBiomeAudio();
+    updateNightAudio();
+
+
+    const moving =
+        keys.KeyW ||
+        keys.KeyA ||
+        keys.KeyS ||
+        keys.KeyD;
+
+    if(!moving){
+
+        footstepTimer = 0;
+
+        return;
+    }
+
+
+    footstepTimer -= delta;
+
+    if(footstepTimer <= 0){
+
+        const sprinting =
+            keys.ShiftLeft ||
+            keys.ShiftRight;
+
+        playFootstep();
+
+        footstepTimer =
+            sprinting
+                ? .28
+                : .43;
+    }
+}
+
+
+// Start all audio only from a user interaction.
+// Browsers allow this because PLAY/LOAD is a click.
+function startGameAudio(){
+
+    setupGameAudio();
+
+    updateBiomeAudio();
+    updateNightAudio();
+}
+
+
+// ============================================================
+// SIMPLE DYNAMIC CLOUDS
+// ============================================================
+
+function createCloudTexture(){
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 128;
+
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,256,128);
+
+    ctx.fillStyle = "rgba(255,255,255,.88)";
+
+    const puffs = [
+        [55,72,28],
+        [82,56,34],
+        [116,65,38],
+        [150,55,30],
+        [180,72,26],
+        [105,82,42]
+    ];
+
+    for(const [x,y,r] of puffs){
+        ctx.beginPath();
+        ctx.arc(x,y,r,0,Math.PI*2);
+        ctx.fill();
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+
+    return texture;
+}
+
+
+function createCloud(){
+
+    const group =
+        new THREE.Group();
+
+    if(!cloudTexture){
+
+        cloudTexture =
+            createCloudTexture();
+    }
+
+    if(!cloudMaterial){
+
+        cloudMaterial =
+            new THREE.SpriteMaterial({
+                map: cloudTexture,
+                transparent:true,
+                opacity:.82,
+                depthWrite:false,
+                fog:true
+            });
+
+        cloudMaterials.push(
+            cloudMaterial
+        );
+    }
+
+    const sprite =
+        new THREE.Sprite(
+            cloudMaterial
+        );
+
+    const size =
+        28 + Math.random()*34;
+
+    sprite.scale.set(
+        size,
+        size*.5,
+        1
+    );
+
+    group.add(sprite);
+
+    group.position.set(
+        camera.position.x +
+            (Math.random()-.5)*700,
+        105 + Math.random()*55,
+        camera.position.z +
+            (Math.random()-.5)*700
+    );
+
+    group.userData = {
+        speed:.7 + Math.random()*1.1,
+        baseY:group.position.y,
+        phase:Math.random()*Math.PI*2
+    };
+
+    cloudLayer.add(group);
+}
+
+function createCloudLayer(){
+
+    cloudLayer = new THREE.Group();
+
+    scene.add(cloudLayer);
+
+    for(let i=0;i<18;i++){
+        createCloud();
+    }
+}
+
+
+function updateClouds(delta){
+
+    if(!cloudLayer) return;
+
+    for(const cloud of cloudLayer.children){
+
+        cloud.position.x +=
+            cloud.userData.speed * delta;
+
+        cloud.position.y =
+            cloud.userData.baseY +
+            Math.sin(
+                performance.now()*.00015 +
+                cloud.userData.phase
+            )*.8;
+
+        const dx =
+            cloud.position.x - camera.position.x;
+
+        const dz =
+            cloud.position.z - camera.position.z;
+
+        if(dx > 500)
+            cloud.position.x -= 1000;
+
+        if(dx < -500)
+            cloud.position.x += 1000;
+
+        if(dz > 500)
+            cloud.position.z -= 1000;
+
+        if(dz < -500)
+            cloud.position.z += 1000;
+    }
+
+    const daylight =
+        Math.max(
+            .08,
+            Math.sin(
+                (worldTime/24)*Math.PI*2 -
+                Math.PI/2
+            )*.9 + .25
+        );
+
+    for(const material of cloudMaterials){
+        material.opacity =
+            .45 + daylight*.4;
+    }
+}
+
+
+// ============================================================
+// SUN, MOON, STARS & NATURAL GROUND DETAIL
+// ============================================================
+
+function createSkyBodies(){
+
+    const sunGeo =
+        new THREE.SphereGeometry(
+            9,
+            24,
+            16
+        );
+
+    const sunMat =
+        new THREE.MeshBasicMaterial({
+            color: 0xfff2b0
+        });
+
+    sunMesh =
+        new THREE.Mesh(
+            sunGeo,
+            sunMat
+        );
+
+    scene.add(sunMesh);
+
+
+    const moonGeo =
+        new THREE.SphereGeometry(
+            6,
+            20,
+            14
+        );
+
+    const moonMat =
+        new THREE.MeshBasicMaterial({
+            color: 0xdfe8ff
+        });
+
+    moonMesh =
+        new THREE.Mesh(
+            moonGeo,
+            moonMat
+        );
+
+    scene.add(moonMesh);
+
+
+    // Small star field. One Points object keeps it cheap.
+    const starCount = 900;
+    const positions =
+        new Float32Array(
+            starCount * 3
+        );
+
+    for(let i=0;i<starCount;i++){
+
+        const theta =
+            Math.random()*Math.PI*2;
+
+        const phi =
+            Math.random()*.85;
+
+        const radius = 850;
+
+        positions[i*3] =
+            Math.cos(theta) *
+            Math.sin(phi) *
+            radius;
+
+        positions[i*3+1] =
+            Math.cos(phi) *
+            radius;
+
+        positions[i*3+2] =
+            Math.sin(theta) *
+            Math.sin(phi) *
+            radius;
+    }
+
+    const starGeo =
+        new THREE.BufferGeometry();
+
+    starGeo.setAttribute(
+        "position",
+        new THREE.BufferAttribute(
+            positions,
+            3
+        )
+    );
+
+    const starMat =
+        new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 1.8,
+            transparent: true,
+            opacity: 0,
+            sizeAttenuation: false,
+            depthWrite: false
+        });
+
+    stars =
+        new THREE.Points(
+            starGeo,
+            starMat
+        );
+
+    scene.add(stars);
+}
+
+
+function updateSkyBodies(){
+
+    if(!sunMesh || !moonMesh)
+        return;
+
+    const angle =
+        (worldTime / 24) *
+        Math.PI * 2 -
+        Math.PI/2;
+
+    const radius = 620;
+
+    // Sun rises in the east and sets in the west.
+    const sunX =
+        Math.cos(angle) * radius;
+
+    const sunY =
+        Math.sin(angle) * radius;
+
+    const sunZ = -180;
+
+    sunMesh.position.set(
+        camera.position.x + sunX,
+        Math.max(
+            -100,
+            sunY
+        ),
+        camera.position.z + sunZ
+    );
+
+
+    // Moon is opposite the sun.
+    moonMesh.position.set(
+        camera.position.x - sunX,
+        Math.max(
+            -100,
+            -sunY
+        ),
+        camera.position.z + sunZ
+    );
+
+
+    const daylight =
+        THREE.MathUtils.clamp(
+            Math.sin(angle)*.5+.5,
+            0,
+            1
+        );
+
+    const night =
+        1-daylight;
+
+    moonMesh.material.opacity =
+        .35 + night*.65;
+
+    moonMesh.material.transparent = true;
+
+    stars.material.opacity =
+        night*.9;
+
+
+    // Sun color becomes warmer near sunrise/sunset.
+    if(daylight < .35){
+
+        sunMesh.material.color.setHex(
+            0xffb45c
+        );
+
+    }else{
+
+        sunMesh.material.color.setHex(
+            0xfff2b0
+        );
+    }
+}
+
+
+// ------------------------------------------------------------
+// GRASS — INSTANCED, VISIBLE, TERRAIN-FOLLOWING
+// ------------------------------------------------------------
+
+let grassTexture = null;
+let grassMaterial = null;
+let grassDummy = new THREE.Object3D();
+
+function setupGrassMaterial(){
+    const canvas = document.createElement("canvas");
+    canvas.width = 32;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,32,64);
+    ctx.fillStyle = "#4f8f3d";
+    for(let i=0;i<7;i++){
+        const x=5+i*3.7;
+        ctx.beginPath();
+        ctx.moveTo(x-2,63);
+        ctx.lineTo(x,8+(i%3)*5);
+        ctx.lineTo(x+2.5,63);
+        ctx.closePath();
+        ctx.fill();
+    }
+    grassTexture = new THREE.CanvasTexture(canvas);
+    grassTexture.colorSpace = THREE.SRGBColorSpace;
+    grassTexture.needsUpdate = true;
+    grassMaterial = new THREE.MeshLambertMaterial({
+        map: grassTexture,
+        transparent: true,
+        alphaTest: .35,
+        side: THREE.DoubleSide,
+        depthWrite: true
+    });
+}
+
+function createGrassField(){
+    if(grassField){
+        scene.remove(grassField);
+        grassField.geometry?.dispose();
+    }
+    if(!grassMaterial) setupGrassMaterial();
+
+    // Two crossed planes are represented by two instanced meshes.
+    const geometry = new THREE.PlaneGeometry(1.0,1.55);
+    const group = new THREE.Group();
+    const count = 140;
+    const positions = [];
+
+    for(let i=0;i<count;i++){
+        positions.push({
+            x:(Math.random()-.5)*300,
+            z:(Math.random()-.5)*300,
+            scale:.55+Math.random()*1.0,
+            rot:Math.random()*Math.PI,
+            phase:Math.random()*Math.PI*2
+        });
+    }
+
+    for(let pass=0;pass<2;pass++){
+        const mesh = new THREE.InstancedMesh(
+            geometry,
+            grassMaterial,
+            count
+        );
+        mesh.castShadow=false;
+        mesh.receiveShadow=false;
+        mesh.frustumCulled=true;
+
+        for(let i=0;i<count;i++){
+            const p=positions[i];
+            grassDummy.position.set(p.x,0,p.z);
+            grassDummy.rotation.set(0,p.rot+pass*Math.PI/2,0);
+            grassDummy.scale.set(p.scale,p.scale,p.scale);
+            grassDummy.updateMatrix();
+            mesh.setMatrixAt(i,grassDummy.matrix);
+        }
+        mesh.instanceMatrix.needsUpdate=true;
+        mesh.userData.positions=positions;
+        mesh.userData.pass=pass;
+        group.add(mesh);
+    }
+
+    group.userData.cellSize=90;
+    grassField=group;
+    scene.add(group);
+}
+
+function updateGrassField(){
+    if(!grassField) return;
+
+    const cellSize=80;
+    const centerX=Math.floor(camera.position.x/cellSize)*cellSize;
+    const centerZ=Math.floor(camera.position.z/cellSize)*cellSize;
+    grassField.position.set(centerX,0,centerZ);
+
+    const now=performance.now()*.001;
+
+    for(const mesh of grassField.children){
+        const positions=mesh.userData.positions;
+        const pass=mesh.userData.pass;
+        for(let i=0;i<positions.length;i++){
+            const p=positions[i];
+            const wx=centerX+p.x;
+            const wz=centerZ+p.z;
+            const h=terrainHeight(wx,wz)+.02;
+            const sway=Math.sin(now*.9+p.phase)*.035;
+            grassDummy.position.set(p.x,h,p.z);
+            grassDummy.rotation.set(sway,p.rot+pass*Math.PI/2,sway*.6);
+            grassDummy.scale.set(p.scale,p.scale,p.scale);
+            grassDummy.updateMatrix();
+            mesh.setMatrixAt(i,grassDummy.matrix);
+        }
+        mesh.instanceMatrix.needsUpdate=true;
+    }
+}
+
+
+// ------------------------------------------------------------
+// RUGGED TERRAIN DETAIL
+// ------------------------------------------------------------
+
+function createGroundDetail(){
+    return null;
+}
+
+
+function updateGroundDetail(detail){
+    // Intentionally empty: ground detail is omitted in the optimized build.
+}
+
+
+// ============================================================
+// SUN, MOON & STARS
+// ============================================================
+
+function createSunMoon(){
+
+    // Very lightweight meshes: no textures, no shadows.
+    sunMesh =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                10,
+                20,
+                14
+            ),
+            new THREE.MeshBasicMaterial({
+                color: 0xffe9a6
+            })
+        );
+
+    moonMesh =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                6.5,
+                18,
+                12
+            ),
+            new THREE.MeshBasicMaterial({
+                color: 0xdce7ff,
+                transparent: true,
+                opacity: 0
+            })
+        );
+
+    scene.add(sunMesh);
+    scene.add(moonMesh);
+
+
+    // One cheap point-cloud for stars.
+    const count = 500;
+    const positions =
+        new Float32Array(count * 3);
+
+    const radius = 700;
+
+    for(let i=0;i<count;i++){
+
+        const theta =
+            Math.random() * Math.PI * 2;
+
+        const phi =
+            Math.random() * Math.PI * .45;
+
+        positions[i*3] =
+            Math.cos(theta) *
+            Math.sin(phi) *
+            radius;
+
+        positions[i*3+1] =
+            Math.cos(phi) *
+            radius;
+
+        positions[i*3+2] =
+            Math.sin(theta) *
+            Math.sin(phi) *
+            radius;
+    }
+
+    const geometry =
+        new THREE.BufferGeometry();
+
+    geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(
+            positions,
+            3
+        )
+    );
+
+    starField =
+        new THREE.Points(
+            geometry,
+            new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 1.5,
+                sizeAttenuation: false,
+                transparent: true,
+                opacity: 0,
+                depthWrite: false
+            })
+        );
+
+    scene.add(starField);
+}
+
+
+function updateSunMoon(){
+
+    if(
+        !sunMesh ||
+        !moonMesh
+    )
+        return;
+
+    // 0 = midnight, 6 = sunrise, 12 = noon,
+    // 18 = sunset, 24 = midnight.
+    const angle =
+        (worldTime / 24) *
+        Math.PI * 2 -
+        Math.PI / 2;
+
+    const radius = 520;
+
+    const horizontal =
+        Math.cos(angle) * radius;
+
+    const vertical =
+        Math.sin(angle) * radius;
+
+    // Keep the objects in front of the camera's infinite world.
+    sunMesh.position.set(
+        camera.position.x + horizontal,
+        camera.position.y + vertical,
+        camera.position.z - 260
+    );
+
+    moonMesh.position.set(
+        camera.position.x - horizontal,
+        camera.position.y - vertical,
+        camera.position.z - 260
+    );
+
+
+    // Daylight amount.
+    const daylight =
+        THREE.MathUtils.clamp(
+            Math.sin(angle) * .5 + .5,
+            0,
+            1
+        );
+
+    const night =
+        1 - daylight;
+
+
+    // Sun disappears below the horizon at night.
+    sunMesh.visible =
+        vertical > -40;
+
+    // Moon fades in as daylight fades out.
+    moonMesh.visible =
+        night > .08;
+
+    moonMesh.material.opacity =
+        THREE.MathUtils.clamp(
+            night * 1.1,
+            0,
+            .9
+        );
+
+
+    // Warm sunrise/sunset, bright midday.
+    if(daylight < .35){
+
+        sunMesh.material.color.setHex(
+            0xffa95b
+        );
+
+    }else{
+
+        sunMesh.material.color.setHex(
+            0xffe9a6
+        );
+    }
+
+
+    if(starField){
+
+        starField.position.set(
+            camera.position.x,
+            camera.position.y,
+            camera.position.z
+        );
+
+        starField.material.opacity =
+            THREE.MathUtils.clamp(
+                night * .9,
+                0,
+                .9
+            );
+    }
+}
+
+
+// ============================================================
 // TERRAIN FUNCTIONS
 // ============================================================
 
@@ -391,24 +1724,32 @@ function continentNoise(x,z){
 
 function mountainNoise(x,z){
 
-    const large =
-        Math.abs(
-            Math.sin(x*.0042) *
-            Math.cos(z*.0037)
-        );
+    // Smooth, bounded terrain relief.
+    // The old version could change height too aggressively between
+    // neighboring vertices, producing the giant floating/vertical
+    // strips visible in the screenshots.
 
-    const detail =
-        Math.abs(
-            Math.sin(x*.019) *
-            Math.cos(z*.021)
-        );
+    const a =
+        Math.sin(x * .0028) *
+        Math.cos(z * .0024);
+
+    const b =
+        Math.sin(x * .0065 + z * .0031) *
+        .5;
+
+    const c =
+        Math.sin(x * .014 - z * .011) *
+        .18;
+
+    const ridge =
+        Math.pow(Math.abs(a), 2.2);
 
     return (
-        large * large * 30 +
-        detail * 5
+        ridge * 10 +
+        b * 2 +
+        c
     );
 }
-
 
 function biomeAt(x,z){
 
@@ -478,54 +1819,66 @@ function isRiver(x,z){
 
 function terrainHeight(x,z){
 
-    let h = 0;
+    const biome = biomeAt(x,z);
 
-    const biome =
-        biomeAt(x,z);
+    // Broad rolling landforms.
+    let h =
+        Math.sin(x*.0027) *
+        Math.cos(z*.0023) *
+        4.2;
 
-    // rolling terrain
+    // Secondary ridges.
     h +=
-        Math.sin(x*.012) *
-        Math.cos(z*.011) *
-        2.5;
+        Math.sin(
+            x*.0062 +
+            Math.sin(z*.004)
+        ) *
+        1.55;
 
     h +=
-        Math.sin((x+z)*.004) *
-        3;
+        Math.cos(
+            z*.0091 -
+            x*.003
+        ) *
+        .75;
 
-    // mountains exist as terrain,
-    // but are NOT a biome
-    h += mountainNoise(x,z);
+    // Fine irregularity.
+    h +=
+        Math.sin(x*.021 + z*.014) *
+        .28;
 
-    // deserts flatter
+    h +=
+        mountainNoise(x,z);
+
     if(biome === "desert")
-        h *= .45;
+        h *= .42;
 
-    // snow slightly smoother
     if(biome === "snow")
-        h *= .8;
+        h *= .78;
 
-    // river carving
     const rv =
         riverValue(x,z);
 
-    if(rv < .07){
+    if(rv < .065){
 
-        const riverDepth =
+        const depth =
             THREE.MathUtils.mapLinear(
                 rv,
                 0,
-                .07,
-                3.5,
+                .065,
+                1.35,
                 0
             );
 
-        h -= riverDepth;
+        h -= depth;
     }
 
-    return h;
+    return THREE.MathUtils.clamp(
+        h,
+        -4,
+        15
+    );
 }
-
 
 // ============================================================
 // MATERIALS
@@ -584,7 +1937,7 @@ const snowWall =
     mat(0xd5d9dc);
 
 const roof =
-    mat(0x493a34);
+    mat(0x5a4639);
 
 const roofSnow =
     mat(0xeeeeee);
@@ -608,6 +1961,68 @@ const glass =
 // TREE SYSTEM
 // ============================================================
 
+
+function mergeStaticGeometries(geometries){
+
+    const positions = [];
+    const normals = [];
+
+    for(const geometry of geometries){
+
+        const g =
+            geometry.index
+                ? geometry.toNonIndexed()
+                : geometry.clone();
+
+        const position =
+            g.attributes.position;
+
+        const normal =
+            g.attributes.normal;
+
+        for(let i=0;i<position.count;i++){
+
+            positions.push(
+                position.getX(i),
+                position.getY(i),
+                position.getZ(i)
+            );
+
+            normals.push(
+                normal.getX(i),
+                normal.getY(i),
+                normal.getZ(i)
+            );
+        }
+
+        g.dispose();
+    }
+
+    const merged =
+        new THREE.BufferGeometry();
+
+    merged.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+            positions,
+            3
+        )
+    );
+
+    merged.setAttribute(
+        "normal",
+        new THREE.Float32BufferAttribute(
+            normals,
+            3
+        )
+    );
+
+    merged.computeBoundingSphere();
+
+    return merged;
+}
+
+
 function createPineTree(
     x,
     y,
@@ -619,13 +2034,16 @@ function createPineTree(
     const g =
         new THREE.Group();
 
+    g.userData.castShadows = false;
+
+    // One trunk draw call.
     const trunk =
         new THREE.Mesh(
             new THREE.CylinderGeometry(
                 .25*scale,
                 .48*scale,
                 4.5*scale,
-                8
+                7
             ),
             bark
         );
@@ -633,10 +2051,11 @@ function createPineTree(
     trunk.position.y =
         2.25*scale;
 
-    trunk.castShadow = true;
-
     g.add(trunk);
 
+
+    // Merge all foliage layers into ONE geometry.
+    const foliageGeometries = [];
 
     for(let i=0;i<4;i++){
 
@@ -644,25 +2063,34 @@ function createPineTree(
             (2.5 - i*.42)*scale;
 
         const cone =
-            new THREE.Mesh(
-                new THREE.ConeGeometry(
-                    radius,
-                    (3.3 - i*.15)*scale,
-                    9
-                ),
-                snowy ?
-                    snowLeaves :
-                    leaves
+            new THREE.ConeGeometry(
+                radius,
+                (3.3 - i*.15)*scale,
+                8
             );
 
-        cone.position.y =
-            (4+i*1.25)*scale;
+        cone.translate(
+            0,
+            (4+i*1.25)*scale,
+            0
+        );
 
-        cone.castShadow = true;
-
-        g.add(cone);
+        foliageGeometries.push(
+            cone
+        );
     }
 
+    const foliage =
+        new THREE.Mesh(
+            mergeStaticGeometries(
+                foliageGeometries
+            ),
+            snowy
+                ? snowLeaves
+                : leaves
+        );
+
+    g.add(foliage);
 
     g.position.set(x,y,z);
 
@@ -678,7 +2106,6 @@ function createPineTree(
     return g;
 }
 
-
 function createOakTree(
     x,
     y,
@@ -689,13 +2116,15 @@ function createOakTree(
     const g =
         new THREE.Group();
 
+    g.userData.castShadows = false;
+
     const trunk =
         new THREE.Mesh(
             new THREE.CylinderGeometry(
                 .3*scale,
                 .55*scale,
                 5*scale,
-                8
+                7
             ),
             barkDark
         );
@@ -703,41 +2132,45 @@ function createOakTree(
     trunk.position.y =
         2.5*scale;
 
-    trunk.castShadow = true;
-
     g.add(trunk);
 
+
+    const leafGeometries = [];
 
     for(let i=0;i<6;i++){
 
         const leaf =
-            new THREE.Mesh(
-                new THREE.IcosahedronGeometry(
-                    (1.6 + rand(
-                        x+i,
-                        z-i,
-                        -.3,
-                        .5,
-                        22
-                    ))*scale,
-                    1
-                ),
-                i%2 ?
-                    leaves :
-                    leavesLight
+            new THREE.IcosahedronGeometry(
+                (1.6 + rand(
+                    x+i,
+                    z-i,
+                    -.3,
+                    .5,
+                    22
+                ))*scale,
+                0
             );
 
-        leaf.position.set(
+        leaf.translate(
             (Math.sin(i*2.7)*1.4)*scale,
             (4.8 + (i%3)*.7)*scale,
             (Math.cos(i*1.8)*1.4)*scale
         );
 
-        leaf.castShadow = true;
-
-        g.add(leaf);
+        leafGeometries.push(
+            leaf
+        );
     }
 
+    const foliage =
+        new THREE.Mesh(
+            mergeStaticGeometries(
+                leafGeometries
+            ),
+            leaves
+        );
+
+    g.add(foliage);
 
     g.position.set(
         x,y,z
@@ -745,85 +2178,79 @@ function createOakTree(
 
     return g;
 }
-
 
 function createCactus(
     x,y,z,scale
 ){
 
-    const g =
-        new THREE.Group();
-
     const cactusMat =
         mat(0x467844);
 
+    const parts = [];
 
     const main =
-        new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                .35*scale,
-                .45*scale,
-                4*scale,
-                8
-            ),
-            cactusMat
+        new THREE.CylinderGeometry(
+            .35*scale,
+            .45*scale,
+            4*scale,
+            7
         );
 
-    main.position.y =
-        2*scale;
+    main.translate(
+        0,
+        2*scale,
+        0
+    );
 
-    g.add(main);
-
+    parts.push(main);
 
     const arm =
-        new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                .18*scale,
-                .25*scale,
-                1.8*scale,
-                7
-            ),
-            cactusMat
+        new THREE.CylinderGeometry(
+            .18*scale,
+            .25*scale,
+            1.8*scale,
+            7
         );
 
-    arm.position.set(
+    arm.rotateZ(
+        Math.PI/2
+    );
+
+    arm.translate(
         .65*scale,
         2.3*scale,
         0
     );
 
-    arm.rotation.z =
-        Math.PI/2;
-
-    g.add(arm);
-
+    parts.push(arm);
 
     const top =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                .27*scale,
-                8,
-                6
-            ),
-            cactusMat
+        new THREE.SphereGeometry(
+            .27*scale,
+            7,
+            5
         );
 
-    top.position.set(
+    top.translate(
         1.55*scale,
         2.3*scale,
         0
     );
 
-    g.add(top);
+    parts.push(top);
 
+    const cactus =
+        new THREE.Mesh(
+            mergeStaticGeometries(parts),
+            cactusMat
+        );
 
-    g.position.set(
+    cactus.position.set(
         x,y,z
     );
 
-    return g;
+    return cactus;
 }
-
 
 // ============================================================
 // ROCK
@@ -857,9 +2284,359 @@ function createRock(
         Math.random()
     );
 
-    rock.castShadow = true;
+    rock.castShadow = false;
 
     return rock;
+}
+
+
+// ============================================================
+// COLLISION SYSTEM
+// ============================================================
+
+function addChunkCollider(cx, cz, collider){
+
+    const key = `${cx},${cz}`;
+
+    if(!chunkColliders.has(key))
+        chunkColliders.set(key, []);
+
+    chunkColliders.get(key).push(collider);
+}
+
+
+function addTreeCollider(cx, cz, x, z, radius){
+
+    addChunkCollider(cx, cz, {
+        type: "circle",
+        x,
+        z,
+        radius
+    });
+}
+
+
+function addWallCollider(
+    cx, cz,
+    x, z,
+    halfX, halfZ,
+    rotation
+){
+
+    addChunkCollider(cx, cz, {
+        type: "box",
+        x,
+        z,
+        halfX,
+        halfZ,
+        rotation
+    });
+}
+
+
+function addHouseColliders(
+    cx,
+    cz,
+    x,
+    z,
+    type,
+    rotation
+){
+
+    const add = (
+        lx,
+        lz,
+        hx,
+        hz
+    ) => {
+
+        const c =
+            Math.cos(rotation);
+
+        const s =
+            Math.sin(rotation);
+
+        const wx =
+            x + lx*c - lz*s;
+
+        const wz =
+            z + lx*s + lz*c;
+
+        addWallCollider(
+            cx,
+            cz,
+            wx,
+            wz,
+            hx,
+            hz,
+            rotation
+        );
+    };
+
+
+    // Exterior walls.
+    add(
+        0,
+        -6,
+        7.6,
+        .20
+    );
+
+    add(
+        -7.6,
+        0,
+        .20,
+        6
+    );
+
+    add(
+        7.6,
+        0,
+        .20,
+        6
+    );
+
+
+    // Front wall with a proper 3m doorway.
+    add(
+        -5,
+        6,
+        2.6,
+        .20
+    );
+
+    add(
+        5,
+        6,
+        2.6,
+        .20
+    );
+
+    // Porch side posts.
+    add(
+        -3,
+        8.3,
+        .16,
+        .16
+    );
+
+    add(
+        3,
+        8.3,
+        .16,
+        .16
+    );
+
+
+    // Interior divider.
+    add(
+        -2.8,
+        -.2,
+        2.9,
+        .12
+    );
+}
+
+function resolveCircleVsBox(
+    px, pz, radius, box
+){
+
+    const c = Math.cos(-box.rotation);
+    const s = Math.sin(-box.rotation);
+
+    const dx = px - box.x;
+    const dz = pz - box.z;
+
+    // Convert player position into the wall's local coordinates.
+    const lx = dx*c - dz*s;
+    const lz = dx*s + dz*c;
+
+    const closestX =
+        THREE.MathUtils.clamp(
+            lx,
+            -box.halfX,
+            box.halfX
+        );
+
+    const closestZ =
+        THREE.MathUtils.clamp(
+            lz,
+            -box.halfZ,
+            box.halfZ
+        );
+
+    let ox = lx - closestX;
+    let oz = lz - closestZ;
+
+    const distSq = ox*ox + oz*oz;
+
+    if(distSq < radius*radius){
+
+        let nx, nz, push;
+
+        if(distSq > 0.000001){
+
+            const dist = Math.sqrt(distSq);
+
+            nx = ox / dist;
+            nz = oz / dist;
+
+            push = radius - dist;
+
+        } else {
+
+            // Player center is inside the wall rectangle.
+            const toX =
+                box.halfX - Math.abs(lx);
+
+            const toZ =
+                box.halfZ - Math.abs(lz);
+
+            if(toX < toZ){
+
+                nx = lx >= 0 ? 1 : -1;
+                nz = 0;
+                push = radius + toX;
+
+            } else {
+
+                nx = 0;
+                nz = lz >= 0 ? 1 : -1;
+                push = radius + toZ;
+            }
+        }
+
+        // Convert push direction back to world coordinates.
+        const wx = nx*c + nz*s;
+        const wz = -nx*s + nz*c;
+
+        return {
+            x: px + wx*push,
+            z: pz + wz*push
+        };
+    }
+
+    return null;
+}
+
+
+function resolveCircleVsCircle(
+    px, pz, radius, collider
+){
+
+    const dx = px - collider.x;
+    const dz = pz - collider.z;
+
+    const minDist =
+        radius + collider.radius;
+
+    const distSq =
+        dx*dx + dz*dz;
+
+    if(
+        distSq < minDist*minDist
+    ){
+
+        if(distSq < 0.000001){
+
+            return {
+                x: px + minDist,
+                z: pz
+            };
+
+        }
+
+        const dist =
+            Math.sqrt(distSq);
+
+        const push =
+            minDist - dist;
+
+        return {
+            x:
+                px + (dx/dist)*push,
+            z:
+                pz + (dz/dist)*push
+        };
+    }
+
+    return null;
+}
+
+
+function resolveWorldCollisions(
+    x,
+    z
+){
+
+    let px = x;
+    let pz = z;
+
+    const pcx =
+        Math.floor(
+            camera.position.x / CHUNK_SIZE
+        );
+
+    const pcz =
+        Math.floor(
+            camera.position.z / CHUNK_SIZE
+        );
+
+    // Only nearby chunks need collision checks.
+    for(
+        let cx = pcx-1;
+        cx <= pcx+1;
+        cx++
+    ){
+
+        for(
+            let cz = pcz-1;
+            cz <= pcz+1;
+            cz++
+        ){
+
+            const list =
+                chunkColliders.get(
+                    `${cx},${cz}`
+                );
+
+            if(!list)
+                continue;
+
+            // Multiple passes resolve cases where two walls/trees
+            // push the player into another collider.
+            for(let pass=0; pass<3; pass++){
+
+                for(
+                    const collider of list
+                ){
+
+                    const result =
+                        collider.type === "circle"
+                            ? resolveCircleVsCircle(
+                                px,
+                                pz,
+                                PLAYER_RADIUS,
+                                collider
+                            )
+                            : resolveCircleVsBox(
+                                px,
+                                pz,
+                                PLAYER_RADIUS,
+                                collider
+                            );
+
+                    if(result){
+
+                        px = result.x;
+                        pz = result.z;
+                    }
+                }
+            }
+        }
+    }
+
+    return { x:px, z:pz };
 }
 
 
@@ -886,7 +2663,9 @@ function addBox(
         x,y,z
     );
 
-    m.castShadow = true;
+    m.castShadow =
+        parent.userData.castShadows !== false;
+
     m.receiveShadow = true;
 
     parent.add(m);
@@ -908,7 +2687,9 @@ function createHouse(
         new THREE.Group();
 
     house.position.set(
-        x,y,z
+        x,
+        y,
+        z
     );
 
     house.rotation.y =
@@ -922,372 +2703,976 @@ function createHouse(
                 ? snowWall
                 : forestWall;
 
-
     const roofMat =
         biome === "snow"
             ? roofSnow
             : roof;
 
+    const trimMat =
+        biome === "desert"
+            ? bark
+            : woodFloor;
 
-    if(type === "cabin"){
+    const doorMat =
+        biome === "desert"
+            ? barkDark
+            : darkMetal;
 
-        addBox(
+    const interiorFloor =
+        biome === "desert"
+            ? mat(0x9b714b)
+            : biome === "snow"
+                ? mat(0x80624a)
+                : mat(0x705038);
+
+
+    /*
+        HOUSE DESIGN
+        -------------------------------------------------------
+        These are now real architectural structures:
+
+        - foundation
+        - four exterior walls
+        - proper front entrance
+        - windows
+        - floor
+        - porch
+        - pitched roof made from two roof planes
+        - chimney
+        - interior room divider
+        - bed
+        - table + chairs
+        - shelves
+        - fireplace
+        - lamps
+    */
+
+
+    function wallBox(
+        sx,sy,sz,
+        px,py,pz,
+        material=wall
+    ){
+
+        return addBox(
             house,
-            13,5.5,.35,
-            0,2.75,-5.5,
-            wall
-        );
-
-        addBox(
-            house,
-            .35,5.5,11,
-            -6.5,2.75,0,
-            wall
-        );
-
-        addBox(
-            house,
-            .35,5.5,11,
-            6.5,2.75,0,
-            wall
-        );
-
-
-        // Front split around door
-        addBox(
-            house,
-            4.5,5.5,.35,
-            -4,2.75,5.5,
-            wall
-        );
-
-        addBox(
-            house,
-            4.5,5.5,.35,
-            4,2.75,5.5,
-            wall
-        );
-
-        addBox(
-            house,
-            4,1.5,.35,
-            0,4.75,5.5,
-            wall
-        );
-
-
-        // floor
-        addBox(
-            house,
-            13,.25,11,
-            0,.1,0,
-            woodFloor
-        );
-
-
-        // roof
-        const r =
-            new THREE.Mesh(
-                new THREE.ConeGeometry(
-                    9,
-                    4,
-                    4
-                ),
-                roofMat
-            );
-
-        r.scale.z=.72;
-        r.rotation.y=Math.PI/4;
-        r.position.y=7;
-        r.castShadow=true;
-        house.add(r);
-
-
-        addWindow(
-            house,
-            -3,
-            3,
-            5.7
-        );
-
-        addWindow(
-            house,
-            3,
-            3,
-            5.7
-        );
-
-        addWindow(
-            house,
-            -6.7,
-            3,
-            0,
-            Math.PI/2
-        );
-
-        addWindow(
-            house,
-            6.7,
-            3,
-            0,
-            Math.PI/2
-        );
-
-
-        addFurniture(
-            house,
-            "cabin"
+            sx,sy,sz,
+            px,py,pz,
+            material
         );
     }
 
 
-    else if(type === "barn"){
+    // --------------------------------------------------------
+    // FOUNDATION
+    // --------------------------------------------------------
 
-        addBox(
-            house,
-            18,7,.4,
-            0,3.5,-7,
-            wall
-        );
+    wallBox(
+        15.8,.45,12.8,
+        0,.25,0,
+        darkMetal
+    );
 
-        addBox(
-            house,
-            .4,7,14,
-            -9,3.5,0,
-            wall
-        );
-
-        addBox(
-            house,
-            .4,7,14,
-            9,3.5,0,
-            wall
-        );
+    wallBox(
+        15.2,.25,12.2,
+        0,.58,0,
+        interiorFloor
+    );
 
 
-        addBox(
-            house,
-            18,.3,14,
-            0,.15,0,
-            woodFloor
-        );
+    // --------------------------------------------------------
+    // EXTERIOR WALLS
+    // --------------------------------------------------------
+
+    // Back wall
+    wallBox(
+        15.2,5.8,.35,
+        0,3.45,-6
+    );
+
+    // Left / right
+    wallBox(
+        .35,5.8,12,
+        -7.6,3.45,0
+    );
+
+    wallBox(
+        .35,5.8,12,
+        7.6,3.45,0
+    );
 
 
-        // roof
-        const r =
-            new THREE.Mesh(
-                new THREE.ConeGeometry(
-                    12,
-                    6,
-                    4
-                ),
-                roofMat
-            );
+    // Front wall split around the door
+    wallBox(
+        5.2,5.8,.35,
+        -5,3.45,6
+    );
 
-        r.scale.z=.65;
-        r.rotation.y=Math.PI/4;
-        r.position.y=8.5;
-        r.castShadow=true;
-        house.add(r);
+    wallBox(
+        5.2,5.8,.35,
+        5,3.45,6
+    );
 
 
-        // barn door
-        addBox(
-            house,
-            5,5,.25,
-            0,2.5,7.1,
-            barkDark
-        );
+    // Header above front door
+    wallBox(
+        4.8,2.0,.35,
+        0,5.35,6
+    );
 
 
-        addFurniture(
-            house,
-            "barn"
+    // --------------------------------------------------------
+    // FRONT PORCH
+    // --------------------------------------------------------
+
+    wallBox(
+        7.0,.35,3.0,
+        0,.75,7.35,
+        woodFloor
+    );
+
+    // porch posts
+    for(const px of [-3,3]){
+
+        wallBox(
+            .28,3.2,.28,
+            px,2.25,8.3,
+            trimMat
         );
     }
 
 
-    else if(type === "desert"){
+    // porch roof
+    wallBox(
+        8.0,.35,3.4,
+        0,5.55,7.4,
+        roofMat
+    );
+
+
+    // --------------------------------------------------------
+    // FRONT STEPS
+    // --------------------------------------------------------
+
+    wallBox(
+        4.6,
+        .22,
+        1.0,
+        0,
+        .7,
+        6.7,
+        trimMat
+    );
+
+    wallBox(
+        3.7,
+        .22,
+        .75,
+        0,
+        .52,
+        7.35,
+        trimMat
+    );
+
+
+    // --------------------------------------------------------
+    // FRONT DOOR
+    // --------------------------------------------------------
+
+    wallBox(
+        3.0,4.7,.18,
+        0,2.95,5.87,
+        doorMat
+    );
+
+    // door frame
+    wallBox(
+        .22,5.0,.28,
+        -1.62,3.05,5.72,
+        trimMat
+    );
+
+    wallBox(
+        .22,5.0,.28,
+        1.62,3.05,5.72,
+        trimMat
+    );
+
+    wallBox(
+        3.45,.22,.28,
+        0,5.45,5.72,
+        trimMat
+    );
+
+
+    // door handle
+    const handle =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .09,
+                8,
+                6
+            ),
+            mat(0xd3b05a)
+        );
+
+    handle.position.set(
+        .95,
+        3.0,
+        5.65
+    );
+
+    house.add(handle);
+
+
+    // --------------------------------------------------------
+    // WINDOWS
+    // --------------------------------------------------------
+
+    addWindow(
+        house,
+        -4.1,
+        3.6,
+        6.18
+    );
+
+    addWindow(
+        house,
+        4.1,
+        3.6,
+        6.18
+    );
+
+    addWindow(
+        house,
+        -7.78,
+        3.5,
+        0,
+        Math.PI/2
+    );
+
+    addWindow(
+        house,
+        7.78,
+        3.5,
+        0,
+        Math.PI/2
+    );
+
+
+    // Window frames
+    function frameWindow(
+        px,py,pz,
+        rot=0
+    ){
+
+        const frame =
+            new THREE.Group();
+
+        frame.position.set(
+            px,py,pz
+        );
+
+        frame.rotation.y=rot;
+
+        const frameMat = trimMat;
 
         addBox(
-            house,
-            15,5.5,.5,
-            0,2.75,-6,
-            wall
+            frame,
+            2.65,.16,.16,
+            0,1.0,0,
+            frameMat
         );
 
         addBox(
-            house,
-            .5,5.5,12,
-            -7.5,2.75,0,
-            wall
+            frame,
+            2.65,.16,.16,
+            0,-1.0,0,
+            frameMat
         );
 
         addBox(
-            house,
-            .5,5.5,12,
-            7.5,2.75,0,
-            wall
-        );
-
-
-        addBox(
-            house,
-            4.8,5.5,.5,
-            -5,2.75,6,
-            wall
+            frame,
+            .16,2.1,.16,
+            -1.25,0,0,
+            frameMat
         );
 
         addBox(
-            house,
-            4.8,5.5,.5,
-            5,2.75,6,
-            wall
+            frame,
+            .16,2.1,.16,
+            1.25,0,0,
+            frameMat
         );
 
         addBox(
-            house,
-            5,1.4,.5,
-            0,4.8,6,
-            wall
+            frame,
+            .12,1.8,.12,
+            0,0,0,
+            frameMat
         );
 
-
-        addBox(
-            house,
-            15,.25,12,
-            0,.1,0,
-            woodFloor
-        );
+        house.add(frame);
+    }
 
 
-        // flat roof
-        addBox(
-            house,
-            16,.5,13,
-            0,6,0,
+    frameWindow(
+        -4.1,
+        3.6,
+        6.0
+    );
+
+    frameWindow(
+        4.1,
+        3.6,
+        6.0
+    );
+
+    frameWindow(
+        -7.9,
+        3.5,
+        0,
+        Math.PI/2
+    );
+
+    frameWindow(
+        7.9,
+        3.5,
+        0,
+        Math.PI/2
+    );
+
+
+    // --------------------------------------------------------
+    // INTERIOR DIVIDER
+    // --------------------------------------------------------
+
+    // A half-height divider makes the interior feel like rooms
+    // without blocking the whole house.
+    wallBox(
+        5.8,2.5,.22,
+        -2.8,1.85,-.2,
+        wall
+    );
+
+
+    // --------------------------------------------------------
+    // PITCHED ROOF
+    // --------------------------------------------------------
+
+    const roofLeft =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                9.0,
+                .38,
+                13.4
+            ),
             roofMat
         );
 
+    roofLeft.position.set(
+        -3.55,
+        7.95,
+        0
+    );
 
-        addWindow(
-            house,
-            -4,
-            3,
-            6.3
+    // Left roof slope rises toward the ridge.
+    roofLeft.rotation.z =
+        Math.atan2(
+            3.0,
+            7.0
         );
 
-        addWindow(
-            house,
-            4,
-            3,
-            6.3
+    roofLeft.castShadow=true;
+    roofLeft.receiveShadow=true;
+
+    house.add(roofLeft);
+
+
+    const roofRight =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                9.0,
+                .38,
+                13.4
+            ),
+            roofMat
         );
 
+    roofRight.position.set(
+        3.55,
+        7.95,
+        0
+    );
 
-        addFurniture(
-            house,
-            "desert"
+    // Right roof slope rises toward the ridge.
+    roofRight.rotation.z =
+        -Math.atan2(
+            3.0,
+            7.0
+        );
+
+    roofRight.castShadow=true;
+    roofRight.receiveShadow=true;
+
+    house.add(roofRight);
+
+
+    // ridge beam
+    wallBox(
+        .35,.35,13.5,
+        0,9.45,0,
+        trimMat
+    );
+
+    // Heavy fascia boards make the roof read like an actual house.
+    wallBox(
+        .25,
+        .35,
+        13.7,
+        -6.85,
+        6.45,
+        0,
+        trimMat
+    );
+
+    wallBox(
+        .25,
+        .35,
+        13.7,
+        6.85,
+        6.45,
+        0,
+        trimMat
+    );
+
+
+    // snow cap for snow houses
+    if(biome === "snow"){
+
+        wallBox(
+            .55,.22,13.7,
+            0,9.68,0,
+            roofSnow
         );
     }
 
 
-    else if(type === "snow"){
+    // --------------------------------------------------------
+    // CHIMNEY
+    // --------------------------------------------------------
 
-        addBox(
-            house,
-            15,6,.4,
-            0,3,-6,
-            wall
+    const chimneyMat =
+        biome === "snow"
+            ? mat(0x6e6e6e)
+            : mat(0x5a4032);
+
+    wallBox(
+        1.25,
+        4.0,
+        1.25,
+        4.4,
+        8.7,
+        -2.0,
+        chimneyMat
+    );
+
+    wallBox(
+        1.55,
+        .25,
+        1.55,
+        4.4,
+        10.75,
+        -2.0,
+        chimneyMat
+    );
+
+
+    // --------------------------------------------------------
+    // FIREPLACE
+    // --------------------------------------------------------
+
+    wallBox(
+        2.8,
+        2.8,
+        .55,
+        4.7,
+        1.9,
+        -5.65,
+        darkMetal
+    );
+
+    wallBox(
+        3.3,
+        .28,
+        1.0,
+        4.7,
+        .35,
+        -5.15,
+        barkDark
+    );
+
+
+    // warm fireplace light
+    const fireLight =
+        new THREE.PointLight(
+            0xff9a45,
+            2.0,
+            11
         );
 
-        addBox(
-            house,
-            .4,6,12,
-            -7.5,3,0,
-            wall
-        );
+    fireLight.position.set(
+        4.7,
+        1.8,
+        -4.9
+    );
 
-        addBox(
-            house,
-            .4,6,12,
-            7.5,3,0,
-            wall
-        );
+    house.add(fireLight);
 
 
-        addBox(
-            house,
-            5,6,.4,
-            -5,3,6,
-            wall
-        );
+    // --------------------------------------------------------
+    // BED
+    // --------------------------------------------------------
 
-        addBox(
-            house,
-            5,6,.4,
-            5,3,6,
-            wall
-        );
+    wallBox(
+        3.0,
+        .55,
+        4.2,
+        -4.4,
+        1.0,
+        -2.6,
+        woodFloor
+    );
 
-        addBox(
-            house,
-            5,1.5,.4,
-            0,5.25,6,
-            wall
-        );
+    wallBox(
+        2.75,
+        .32,
+        3.2,
+        -4.4,
+        1.38,
+        -2.3,
+        biome === "snow"
+            ? snowWall
+            : mat(0xc3a6a0)
+    );
+
+    wallBox(
+        2.75,
+        .75,
+        .3,
+        -4.4,
+        1.72,
+        -4.0,
+        trimMat
+    );
 
 
-        addBox(
-            house,
-            15,.25,12,
-            0,.1,0,
+    // --------------------------------------------------------
+    // TABLE
+    // --------------------------------------------------------
+
+    wallBox(
+        3.1,
+        .25,
+        1.8,
+        1.1,
+        1.65,
+        1.4,
+        woodFloor
+    );
+
+    for(
+        const px of [.0,2.2]
+    ){
+
+        for(
+            const pz of [.8,2.0]
+        ){
+
+            wallBox(
+                .16,
+                1.25,
+                .16,
+                px,
+                1.0,
+                pz,
+                barkDark
+            );
+        }
+    }
+
+
+    // chairs
+    for(
+        const px of [0,2.2]
+    ){
+
+        wallBox(
+            .9,
+            .25,
+            .9,
+            px,
+            .95,
+            .15,
             woodFloor
         );
 
+        wallBox(
+            .9,
+            1.1,
+            .18,
+            px,
+            1.45,
+            -.25,
+            woodFloor
+        );
+    }
 
-        const r =
+
+    // --------------------------------------------------------
+    // STORAGE / SHELF
+    // --------------------------------------------------------
+
+    wallBox(
+        3.8,
+        2.8,
+        .4,
+        -1.0,
+        1.9,
+        -5.5,
+        woodFloor
+    );
+
+    for(let i=0;i<3;i++){
+
+        wallBox(
+            3.5,
+            .15,
+            .7,
+            -1.0,
+            1.0+i*.85,
+            -5.0,
+            trimMat
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // KITCHEN / LIVING AREA
+    // --------------------------------------------------------
+
+    // Counter
+    wallBox(
+        4.2,
+        1.0,
+        .8,
+        -3.0,
+        1.35,
+        3.8,
+        woodFloor
+    );
+
+    // Counter top
+    wallBox(
+        4.35,
+        .12,
+        .9,
+        -3.0,
+        1.88,
+        3.8,
+        trimMat
+    );
+
+    // Cabinet doors
+    for(let i=0;i<3;i++){
+
+        wallBox(
+            1.15,
+            .75,
+            .06,
+            -4.25 + i*1.25,
+            1.25,
+            3.36,
+            darkMetal
+        );
+    }
+
+    // Small sink
+    wallBox(
+        1.0,
+        .12,
+        .65,
+        -3.0,
+        1.98,
+        3.8,
+        darkMetal
+    );
+
+    // Wall shelves
+    wallBox(
+        3.8,
+        .14,
+        .35,
+        -3.0,
+        4.1,
+        3.75,
+        trimMat
+    );
+
+    wallBox(
+        3.8,
+        .14,
+        .35,
+        -3.0,
+        4.85,
+        3.75,
+        trimMat
+    );
+
+    // Small objects on shelves.
+    for(let i=0;i<5;i++){
+
+        const mug =
             new THREE.Mesh(
-                new THREE.ConeGeometry(
-                    10,
-                    5,
-                    4
+                new THREE.CylinderGeometry(
+                    .11,.11,.25,8
                 ),
-                roofSnow
+                glass
             );
 
-        r.scale.z=.7;
-        r.rotation.y=Math.PI/4;
-        r.position.y=8;
-        r.castShadow=true;
-        house.add(r);
-
-
-        addWindow(
-            house,
-            -4,
-            3.3,
-            6.2
+        mug.position.set(
+            -4.2+i*.6,
+            4.35,
+            3.45
         );
 
-        addWindow(
-            house,
-            4,
-            3.3,
-            6.2
+        house.add(mug);
+    }
+
+    // --------------------------------------------------------
+    // BOOKCASE
+    // --------------------------------------------------------
+
+    wallBox(
+        2.8,
+        3.6,
+        .35,
+        5.4,
+        2.35,
+        -1.0,
+        woodFloor
+    );
+
+    for(let i=0;i<3;i++){
+
+        wallBox(
+            2.5,
+            .14,
+            .5,
+            5.4,
+            1.1+i*.9,
+            -.75,
+            trimMat
+        );
+    }
+
+    // --------------------------------------------------------
+    // CEILING LIGHT
+    // --------------------------------------------------------
+
+    const ceilingLamp =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .22,
+                8,
+                6
+            ),
+            mat(0xffe1a3)
         );
 
+    ceilingLamp.position.set(
+        0,
+        5.65,
+        0
+    );
 
-        addFurniture(
-            house,
-            "snow"
+    house.add(ceilingLamp);
+
+    const ceilingLight =
+        new THREE.PointLight(
+            0xffd59a,
+            .65,
+            12
         );
+
+    ceilingLight.position.set(
+        0,
+        5.35,
+        0
+    );
+
+    house.add(ceilingLight);
+
+    // --------------------------------------------------------
+    // PLANT
+    // --------------------------------------------------------
+
+    const plantPot =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                .28,.34,.45,8
+            ),
+            bark
+        );
+
+    plantPot.position.set(
+        5.4,
+        .95,
+        4.2
+    );
+
+    house.add(plantPot);
+
+    const plant =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .55,
+                8,
+                6
+            ),
+            leavesLight
+        );
+
+    plant.position.set(
+        5.4,
+        1.55,
+        4.2
+    );
+
+    house.add(plant);
+
+
+    // --------------------------------------------------------
+    // LANTERN
+    // --------------------------------------------------------
+
+    const lantern =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .35,
+                .55,
+                .35
+            ),
+            darkMetal
+        );
+
+    lantern.position.set(
+        0,
+        3.0,
+        4.9
+    );
+
+    house.add(lantern);
+
+
+    const lanternLight =
+        new THREE.PointLight(
+            0xffd27d,
+            .9,
+            8
+        );
+
+    lanternLight.position.set(
+        0,
+        3.0,
+        4.7
+    );
+
+    house.add(lanternLight);
+
+
+    // --------------------------------------------------------
+    // BIOME-SPECIFIC DETAILS
+    // --------------------------------------------------------
+
+    if(type === "desert"){
+
+        // Rug
+        wallBox(
+            4.2,
+            .05,
+            2.2,
+            0,
+            .65,
+            -1,
+            mat(0x8d4f35)
+        );
+
+        // Water jar
+        const jar =
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(
+                    .38,
+                    .45,
+                    .9,
+                    12
+                ),
+                mat(0x9c6d43)
+            );
+
+        jar.position.set(
+            5.2,
+            1.15,
+            1.8
+        );
+
+        house.add(jar);
+    }
+
+
+    if(type === "snow"){
+
+        // Thick entrance mat
+        wallBox(
+            3.2,
+            .06,
+            1.5,
+            0,
+            .65,
+            4.1,
+            mat(0x5a4c45)
+        );
+
+        // Firewood stack
+        for(let i=0;i<4;i++){
+
+            const log =
+                new THREE.Mesh(
+                    new THREE.CylinderGeometry(
+                        .18,
+                        .18,
+                        1.8,
+                        8
+                    ),
+                    bark
+                );
+
+            log.rotation.z =
+                Math.PI/2;
+
+            log.position.set(
+                -5.8,
+                .85 + (i%2)*.38,
+                2.4 + Math.floor(i/2)*.4
+            );
+
+            house.add(log);
+        }
     }
 
 
     return house;
 }
-
 
 function addWindow(
     parent,
@@ -1379,95 +3764,155 @@ function addFurniture(
 // RIVER
 // ============================================================
 
-function createRiverSegment(
-    cx,cz
-){
-
-    /*
-       Long thin water ribbons following
-       the procedural river function.
-    */
+function createRiverSegment(cx,cz){
 
     const group =
         new THREE.Group();
 
     const baseX =
-        cx*CHUNK_SIZE;
+        cx * CHUNK_SIZE;
 
     const baseZ =
-        cz*CHUNK_SIZE;
+        cz * CHUNK_SIZE;
 
+    const left = [];
+    const right = [];
 
-    for(let i=0;i<12;i++){
+    // Build one continuous ribbon through the chunk.
+    // The centerline is sampled from the same deterministic river field
+    // used by terrainHeight(), so it remains stable between chunks.
+
+    const samples = 26;
+
+    for(let i=0;i<samples;i++){
 
         const x =
-            baseX -
-            CHUNK_SIZE/2 +
-            i*8;
+            baseX - CHUNK_SIZE/2 +
+            (i/(samples-1))*CHUNK_SIZE;
 
         let bestZ = baseZ;
+        let best = Infinity;
 
-        let best =
-            Infinity;
+        for(let dz=-48;dz<=48;dz+=1.5){
 
-        for(
-            let dz=-45;
-            dz<=45;
-            dz+=2
-        ){
+            const z = baseZ + dz;
+            const v = Math.abs(riverValue(x,z));
 
-            const z =
-                baseZ+dz;
-
-            const v =
-                Math.abs(
-                    riverValue(x,z)
-                );
-
-            if(v<best){
-
-                best=v;
-                bestZ=z;
+            if(v < best){
+                best = v;
+                bestZ = z;
             }
         }
 
+        if(best < .075){
 
-        if(best < .09){
+            // Estimate the river direction so the ribbon width
+            // follows the curve rather than making square tiles.
+            const i2 = Math.min(i+1,samples-1);
+            const x2 =
+                baseX - CHUNK_SIZE/2 +
+                (i2/(samples-1))*CHUNK_SIZE;
+
+            let nextZ = bestZ;
+
+            for(let dz=-48;dz<=48;dz+=1.5){
+
+                const z = baseZ + dz;
+                const v = Math.abs(riverValue(x2,z));
+
+                if(v < Math.abs(riverValue(x2,nextZ)))
+                    nextZ = z;
+            }
+
+            const dx = x2-x;
+            const dz = nextZ-bestZ;
+            const len = Math.max(.001,Math.hypot(dx,dz));
+
+            const nx = -dz/len;
+            const nz = dx/len;
 
             const width =
-                best < .04
-                    ? 5
-                    : 2.5;
+                best < .035 ? 4.5 : 2.4;
 
+            const y =
+                terrainHeight(x,bestZ)+.045;
 
-            const water =
-                new THREE.Mesh(
-                    new THREE.PlaneGeometry(
-                        9,
-                        width
-                    ),
-                    riverMaterial
-                );
-
-            water.rotation.x =
-                -Math.PI/2;
-
-            water.position.set(
-                x,
-                terrainHeight(
-                    x,bestZ
-                )+.05,
-                bestZ
+            left.push(
+                new THREE.Vector3(
+                    x + nx*width,
+                    y,
+                    bestZ + nz*width
+                )
             );
 
-            group.add(water);
+            right.push(
+                new THREE.Vector3(
+                    x - nx*width,
+                    y,
+                    bestZ - nz*width
+                )
+            );
         }
     }
 
+    if(left.length >= 2){
+
+        const vertices = [];
+        const indices = [];
+
+        for(let i=0;i<left.length;i++){
+
+            vertices.push(
+                left[i].x,
+                left[i].y,
+                left[i].z,
+
+                right[i].x,
+                right[i].y,
+                right[i].z
+            );
+
+            if(i < left.length-1){
+
+                const a = i*2;
+                const b = i*2+1;
+                const c = i*2+2;
+                const d = i*2+3;
+
+                indices.push(
+                    a,b,c,
+                    b,d,c
+                );
+            }
+        }
+
+        const geo =
+            new THREE.BufferGeometry();
+
+        geo.setAttribute(
+            "position",
+            new THREE.Float32BufferAttribute(
+                vertices,
+                3
+            )
+        );
+
+        geo.setIndex(indices);
+        geo.computeVertexNormals();
+
+        const water =
+            new THREE.Mesh(
+                geo,
+                riverMaterial
+            );
+
+        water.receiveShadow = true;
+
+        group.add(water);
+    }
 
     return group;
 }
-
 
 // ============================================================
 // NPC
@@ -1493,7 +3938,7 @@ function createNPC(
             ),
             mat(
                 rand(
-                    id,
+                    String(id).length * 17,
                     3,
                     0x303030,
                     0xb08060,
@@ -1569,21 +4014,21 @@ function createNPC(
         id,
         speed:
             rand(
-                id,
+                String(id).length * 23,
                 4,
                 .6,
                 1.5
             ),
         direction:
             rand(
-                id,
+                String(id).length * 29,
                 5,
                 0,
                 Math.PI*2
             ),
         timer:
             rand(
-                id,
+                String(id).length * 31,
                 6,
                 1,
                 8
@@ -1599,6 +4044,30 @@ function createNPC(
 
     return npc;
 }
+
+
+// ============================================================
+// WORLD UNDERLAY
+// ============================================================
+
+const worldUnderlay =
+    new THREE.Mesh(
+        new THREE.PlaneGeometry(
+            5000,
+            5000
+        ),
+        forestGround
+    );
+
+worldUnderlay.rotation.x =
+    -Math.PI / 2;
+
+worldUnderlay.position.y =
+    -12;
+
+worldUnderlay.receiveShadow = true;
+
+scene.add(worldUnderlay);
 
 
 // ============================================================
@@ -1626,6 +4095,9 @@ function generateChunk(
     const baseZ =
         cz*CHUNK_SIZE;
 
+    // All vegetation/water uses world coordinates.
+    // Terrain vertices stay local and are translated by ground.position below.
+
 
     // --------------------------------------------------------
     // TERRAIN
@@ -1635,8 +4107,8 @@ function generateChunk(
         new THREE.PlaneGeometry(
             CHUNK_SIZE,
             CHUNK_SIZE,
-            20,
-            20
+            28,
+            28
         );
 
     geo.rotateX(-Math.PI/2);
@@ -1693,6 +4165,14 @@ function generateChunk(
                     : forestGround
         );
 
+    // IMPORTANT: PlaneGeometry coordinates are local to the chunk.
+    // Move the completed terrain mesh into its actual world chunk.
+    ground.position.set(
+        baseX,
+        0,
+        baseZ
+    );
+
     ground.receiveShadow=true;
 
     chunk.add(ground);
@@ -1715,10 +4195,10 @@ function generateChunk(
 
     const count =
         centerBiome === "desert"
-            ? 15
+            ? 7
             : centerBiome === "snow"
-                ? 20
-                : 38;
+                ? 9
+                : 12;
 
 
     for(
@@ -1760,8 +4240,8 @@ function generateChunk(
 
 
         if(
-            Math.abs(x)<18 &&
-            Math.abs(z)<18
+            Math.abs(x)<22 &&
+            Math.abs(z)<22
         ) continue;
 
 
@@ -1783,17 +4263,26 @@ function generateChunk(
                 hash(sx,sz,7) > .3
             ){
 
+                const cactusScale =
+                    rand(
+                        sx,
+                        sz,
+                        .6,
+                        1.7,
+                        8
+                    );
+
                 chunk.add(
                     createCactus(
                         x,y,z,
-                        rand(
-                            sx,
-                            sz,
-                            .6,
-                            1.7,
-                            8
-                        )
+                        cactusScale
                     )
+                );
+
+                addTreeCollider(
+                    cx, cz,
+                    x, z,
+                    .55 * cactusScale
                 );
 
             }else{
@@ -1840,32 +4329,50 @@ function generateChunk(
                 hash(sx,sz,14) > .35
             ){
 
+                const treeScale =
+                    rand(
+                        sx,
+                        sz,
+                        .65,
+                        1.35,
+                        12
+                    );
+
                 chunk.add(
                     createOakTree(
                         x,y,z,
-                        rand(
-                            sx,
-                            sz,
-                            .65,
-                            1.35,
-                            12
-                        )
+                        treeScale
                     )
+                );
+
+                addTreeCollider(
+                    cx, cz,
+                    x, z,
+                    .65 * treeScale
                 );
 
             }else{
 
+                const treeScale =
+                    rand(
+                        sx,
+                        sz,
+                        .7,
+                        1.5,
+                        13
+                    );
+
                 chunk.add(
                     createPineTree(
                         x,y,z,
-                        rand(
-                            sx,
-                            sz,
-                            .7,
-                            1.5,
-                            13
-                        )
+                        treeScale
                     )
+                );
+
+                addTreeCollider(
+                    cx, cz,
+                    x, z,
+                    .55 * treeScale
                 );
             }
         }
@@ -1961,6 +4468,15 @@ function generateChunk(
 
 
             chunk.add(house);
+
+            addHouseColliders(
+                cx,
+                cz,
+                hx,
+                hz,
+                type,
+                house.rotation.y
+            );
 
 
             // NPC near house
@@ -2075,30 +4591,22 @@ function disposeObject(
     object
 ){
 
+    /*
+      IMPORTANT:
+      Most world materials are shared between many chunks.
+      Disposing a shared material when ONE chunk unloads
+      makes every other chunk turn black/invisible.
+
+      We therefore dispose geometries here, but keep the
+      shared materials alive for the lifetime of the world.
+    */
+
     object.traverse(
         child=>{
 
             if(child.geometry)
                 child.geometry.dispose();
 
-            if(child.material){
-
-                if(
-                    Array.isArray(
-                        child.material
-                    )
-                ){
-
-                    child.material
-                        .forEach(
-                            m=>m.dispose()
-                        );
-
-                }else{
-
-                    child.material.dispose();
-                }
-            }
         }
     );
 }
@@ -2119,6 +4627,10 @@ function updateChunks(){
         );
 
 
+    // Generate closest missing chunks first, with a small per-frame
+    // budget. This prevents a giant hitch when crossing a chunk boundary.
+    const missing = [];
+
     for(
         let x=pcx-VIEW_DISTANCE;
         x<=pcx+VIEW_DISTANCE;
@@ -2127,14 +4639,44 @@ function updateChunks(){
 
         for(
             let z=pcz-VIEW_DISTANCE;
-        z<=pcz+VIEW_DISTANCE;
-        z++
+            z<=pcz+VIEW_DISTANCE;
+            z++
         ){
 
-            generateChunk(
-                x,z
-            );
+            const key =
+                `${x},${z}`;
+
+            if(!chunks.has(key)){
+
+                const dx=x-pcx;
+                const dz=z-pcz;
+
+                missing.push({
+                    x,
+                    z,
+                    distance:
+                        dx*dx + dz*dz
+                });
+            }
         }
+    }
+
+    missing.sort(
+        (a,b)=>
+            a.distance-b.distance
+    );
+
+    // At most 1 heavy chunk build per frame.
+    for(
+        let i=0;
+        i<Math.min(1,missing.length);
+        i++
+    ){
+
+        generateChunk(
+            missing[i].x,
+            missing[i].z
+        );
     }
 
 
@@ -2161,11 +4703,12 @@ function updateChunks(){
 
             disposeObject(chunk);
 
+            chunkColliders.delete(key);
+
             chunks.delete(key);
         }
     }
 }
-
 
 // ============================================================
 // PLAYER MOVEMENT
@@ -2244,18 +4787,55 @@ function updatePlayer(
         forward/=length;
         side/=length;
 
+        const distance =
+            speed * developerSpeedMultiplier * delta;
 
-        controls.moveForward(
-            forward *
-            speed *
-            delta
+        // Build the desired world-space movement first.
+        const forwardVector =
+            new THREE.Vector3();
+
+        camera.getWorldDirection(
+            forwardVector
         );
 
-        controls.moveRight(
-            side *
-            speed *
-            delta
-        );
+        forwardVector.y = 0;
+
+        if(forwardVector.lengthSq() > 0)
+            forwardVector.normalize();
+
+        // Camera-right vector.
+        // The previous version had this sign reversed, which made
+        // D move left and A move right.
+        const rightVector =
+            new THREE.Vector3(
+                -forwardVector.z,
+                0,
+                forwardVector.x
+            );
+
+        const desiredX =
+            camera.position.x +
+            forwardVector.x * forward * distance +
+            rightVector.x * side * distance;
+
+        const desiredZ =
+            camera.position.z +
+            forwardVector.z * forward * distance +
+            rightVector.z * side * distance;
+
+        const resolved =
+            developerGodMode
+                ? {x: desiredX, z: desiredZ}
+                : resolveWorldCollisions(
+                    desiredX,
+                    desiredZ
+                );
+
+        camera.position.x =
+            resolved.x;
+
+        camera.position.z =
+            resolved.z;
     }
 
 
@@ -2269,7 +4849,7 @@ function updatePlayer(
 
     const desired =
         ground +
-        PLAYER_HEIGHT;
+        PLAYER_HEIGHT + .12;
 
 
     camera.position.y +=
@@ -2380,7 +4960,7 @@ function updateDayNight(
 ){
 
     worldTime +=
-        delta*.35;
+        delta*.025;
 
 
     if(worldTime>=24)
@@ -2429,12 +5009,14 @@ function updateDayNight(
 
 
     sun.intensity =
-        daylight*3;
+        daylight * 3.2;
 
 
+    // Keep a small amount of moon/sky fill at night so
+    // trees, houses and NPCs remain visible.
     skyLight.intensity =
-        .15 +
-        daylight*1.5;
+        .45 +
+        daylight * 1.45;
 
 
     const dayColor =
@@ -2460,8 +5042,8 @@ function updateDayNight(
 
 
     renderer.toneMappingExposure =
-        .35 +
-        daylight*.8;
+        .65 +
+        daylight*.55;
 
 
     const hours =
@@ -2514,78 +5096,6 @@ function toggleFlashlight(){
             ? "FLASHLIGHT ON"
             : "FLASHLIGHT OFF"
     );
-}
-
-
-// ============================================================
-// AUDIO
-// ============================================================
-
-let audioContext=null;
-let ambientGain=null;
-let audioStarted=false;
-
-
-function startAudio(){
-
-    if(audioStarted)
-        return;
-
-    audioStarted=true;
-
-
-    audioContext =
-        new (
-            window.AudioContext ||
-            window.webkitAudioContext
-        )();
-
-
-    ambientGain =
-        audioContext.createGain();
-
-    ambientGain.gain.value=.025;
-
-    ambientGain.connect(
-        audioContext.destination
-    );
-
-
-    // Simple non-positional ambient sound
-    const oscillator =
-        audioContext.createOscillator();
-
-    oscillator.type="sine";
-
-    oscillator.frequency.value=110;
-
-    oscillator.connect(
-        ambientGain
-    );
-
-    oscillator.start();
-
-
-    // second subtle tone
-    const osc2 =
-        audioContext.createOscillator();
-
-    osc2.type="triangle";
-
-    osc2.frequency.value=165;
-
-    const gain2 =
-        audioContext.createGain();
-
-    gain2.gain.value=.008;
-
-    osc2.connect(gain2);
-
-    gain2.connect(
-        audioContext.destination
-    );
-
-    osc2.start();
 }
 
 
@@ -2743,29 +5253,326 @@ function showStatus(
 
 
 // ============================================================
+// MENU / SETTINGS
+// ============================================================
+
+const startMenu =
+    document.getElementById("start");
+
+const pauseMenu =
+    document.getElementById("pauseMenu");
+
+const settingsPanel =
+    document.getElementById("settingsPanel");
+
+
+function showMainMenu(){
+
+    gamePaused = true;
+
+    startMenu.style.display = "flex";
+    pauseMenu.style.display = "none";
+    settingsPanel.style.display = "none";
+
+    if(controls.isLocked)
+        controls.unlock();
+}
+
+
+function showPauseMenu(){
+
+    if(!gameStarted)
+        return;
+
+    gamePaused = true;
+
+    pauseMenu.style.display = "flex";
+    startMenu.style.display = "none";
+    settingsPanel.style.display = "none";
+
+    if(controls.isLocked)
+        controls.unlock();
+}
+
+
+function resumeGame(){
+
+    gamePaused = false;
+
+    pauseMenu.style.display = "none";
+    startMenu.style.display = "none";
+    settingsPanel.style.display = "none";
+
+    controls.lock();
+}
+
+
+function openSettings(returnTo = "pause"){
+
+    settingsReturn = returnTo;
+
+    document.getElementById("quality").value =
+        rendererQuality;
+
+    document.getElementById("resolutionScale").value =
+        Math.round(resolutionScale * 100);
+
+    document.getElementById("viewDistance").value =
+        viewDistanceSetting;
+
+    document.getElementById("shadows").value =
+        shadowsEnabled ? "on" : "off";
+
+    document.getElementById("fog").value =
+        fogEnabled ? "on" : "off";
+
+    updateSettingsLabels();
+
+    settingsPanel.style.display = "flex";
+    pauseMenu.style.display = "none";
+    startMenu.style.display = "none";
+
+    if(controls.isLocked)
+        controls.unlock();
+}
+
+
+function closeSettings(){
+
+    settingsPanel.style.display = "none";
+
+    if(settingsReturn === "main"){
+        startMenu.style.display = "flex";
+        pauseMenu.style.display = "none";
+    }else{
+        pauseMenu.style.display = "flex";
+        startMenu.style.display = "none";
+    }
+}
+
+
+function updateSettingsLabels(){
+
+    document.getElementById("resolutionValue").textContent =
+        `${document.getElementById("resolutionScale").value}%`;
+
+    document.getElementById("viewDistanceValue").textContent =
+        document.getElementById("viewDistance").value;
+}
+
+
+function applyGraphicsSettings(){
+
+    rendererQuality =
+        document.getElementById("quality").value;
+
+    resolutionScale =
+        Number(
+            document.getElementById("resolutionScale").value
+        ) / 100;
+
+    viewDistanceSetting =
+        Number(
+            document.getElementById("viewDistance").value
+        );
+
+    VIEW_DISTANCE =
+        THREE.MathUtils.clamp(
+            viewDistanceSetting,
+            1,
+            3
+        );
+
+    shadowsEnabled =
+        document.getElementById("shadows").value === "on";
+
+    fogEnabled =
+        document.getElementById("fog").value === "on";
+
+
+    // Graphics quality controls renderer pixel density.
+    const qualityScale = {
+        low: .65,
+        medium: .9,
+        high: 1.15,
+        ultra: 1.35
+    }[rendererQuality] || .9;
+
+    renderer.setPixelRatio(
+        Math.min(
+            devicePixelRatio * qualityScale * resolutionScale,
+            1.35
+        )
+    );
+
+    renderer.shadowMap.enabled =
+        shadowsEnabled;
+
+    sun.castShadow =
+        shadowsEnabled;
+
+
+    if(fogEnabled){
+
+        scene.fog =
+            scene.fog ||
+            new THREE.Fog(
+                scene.background,
+                120,
+                600
+            );
+
+        scene.fog.near = 90;
+        scene.fog.far = 360;
+
+    }else{
+
+        scene.fog = null;
+    }
+
+
+    showStatus("GRAPHICS SETTINGS APPLIED");
+
+    closeSettings();
+}
+
+
+// Menu buttons
+document.getElementById("mainSettings").onclick =
+    () => openSettings("main");
+
+document.getElementById("pauseSettings").onclick =
+    () => openSettings("pause");
+
+document.getElementById("closeSettings").onclick =
+    closeSettings;
+
+document.getElementById("applySettings").onclick =
+    applyGraphicsSettings;
+
+document.getElementById("resolutionScale").oninput =
+    updateSettingsLabels;
+
+document.getElementById("viewDistance").oninput =
+    updateSettingsLabels;
+
+
+document.getElementById("resumeGame").onclick =
+    resumeGame;
+
+
+document.getElementById("pauseSave").onclick =
+    saveGame;
+
+
+document.getElementById("pauseLoad").onclick =
+    () => {
+        loadGame();
+        resumeGame();
+    };
+
+
+document.getElementById("mainMenu").onclick =
+    showMainMenu;
+
+
+document.getElementById("quitGame").onclick =
+    () => {
+
+        /*
+          Browsers generally block JavaScript from closing a tab
+          that the page did not open. Try it, and provide a useful
+          fallback instead of pretending it worked.
+        */
+        window.close();
+
+        showStatus(
+            "BROWSER BLOCKED CLOSE — CLOSE THE TAB TO EXIT"
+        );
+    };
+
+
+// Escape opens the in-game pause menu.
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if(
+            event.code === "Escape" &&
+            gameStarted
+        ){
+
+            event.preventDefault();
+
+            if(settingsPanel.style.display === "flex")
+                return;
+
+            if(gamePaused)
+                resumeGame();
+            else
+                showPauseMenu();
+        }
+    }
+);
+
+
+// ============================================================
 // START GAME
 // ============================================================
 
 document
     .getElementById("enter")
-    .onclick=()=>{
+    .onclick=(event)=>{
 
-        startAudio();
+        event.preventDefault();
 
-        controls.lock();
+        try{
+            startGameAudio();
+        }catch(error){
+            console.warn(
+                "Audio unavailable; continuing without audio.",
+                error
+            );
+        }
+
+        gameStarted = true;
+        gamePaused = false;
+
+        startMenu.style.display = "none";
+        pauseMenu.style.display = "none";
+
+        try {
+            controls.lock();
+        } catch (error) {
+            console.error("Pointer lock failed:", error);
+            showStatus("GAME STARTED — CLICK THE GAME SCREEN");
+        }
 
     };
 
 
 document
     .getElementById("loadStart")
-    .onclick=()=>{
+    .onclick=(event)=>{
 
-        startAudio();
+        event.preventDefault();
+
+        startGameAudio();
+
+        gameStarted = true;
+        gamePaused = false;
 
         loadGame();
 
-        controls.lock();
+        startMenu.style.display = "none";
+        pauseMenu.style.display = "none";
+
+        try {
+            controls.lock();
+        } catch (error) {
+            console.error("Pointer lock failed:", error);
+            showStatus("CLICK THE GAME SCREEN AND TRY AGAIN");
+        }
 
     };
 
@@ -2774,11 +5581,12 @@ controls.addEventListener(
     "lock",
     ()=>{
 
-        gameStarted=true;
+        gameStarted = true;
+        gamePaused = false;
 
-        document
-            .getElementById("start")
-            .style.display="none";
+        startMenu.style.display = "none";
+        pauseMenu.style.display = "none";
+        settingsPanel.style.display = "none";
     }
 );
 
@@ -2787,9 +5595,15 @@ controls.addEventListener(
     "unlock",
     ()=>{
 
-        document
-            .getElementById("start")
-            .style.display="flex";
+        // Pointer unlock is intentionally handled by our pause/menu
+        // system rather than automatically opening the main menu.
+        if(
+            gameStarted &&
+            !gamePaused &&
+            settingsPanel.style.display !== "flex"
+        ){
+            showPauseMenu();
+        }
     }
 );
 
@@ -2827,6 +5641,445 @@ generateChunk(-1,0);
 generateChunk(0,1);
 generateChunk(0,-1);
 
+// Grass must be initialized after grassDummy and the terrain functions
+// have been initialized. This prevents the startup TDZ crash.
+createGrassField();
+updateGrassField();
+
+
+// ============================================================
+// STARTUP ERROR REPORTING
+// ============================================================
+
+window.addEventListener("error", (event) => {
+    console.error(event.error || event.message);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+    console.error(event.reason);
+});
+
+
+
+// Audio files expected by the game:
+// ./audio/forest_footstep.mp3
+// ./audio/desert_footstep.mp3
+// ./audio/snow_footstep.mp3
+// ./audio/forest_ambience.mp3
+// ./audio/desert_ambience.mp3
+// ./audio/snow_ambience.mp3
+// ./audio/night_ambience.mp3
+
+
+// ============================================================
+// DEVELOPER CONSOLE
+// ============================================================
+
+const devConsole =
+    document.getElementById("devConsole");
+
+const devOutput =
+    document.getElementById("devConsoleOutput");
+
+const devInput =
+    document.getElementById("devConsoleInput");
+
+const devForm =
+    document.getElementById("devConsoleForm");
+
+
+function devPrint(message){
+
+    if(!devOutput)
+        return;
+
+    devOutput.textContent +=
+        "\n> " + message;
+
+    devOutput.scrollTop =
+        devOutput.scrollHeight;
+}
+
+
+function toggleDeveloperConsole(){
+
+    if(!devConsole)
+        return;
+
+    developerMode =
+        !developerMode;
+
+    devConsole.classList.toggle(
+        "open",
+        developerMode
+    );
+
+    if(developerMode){
+
+        devPrint(
+            "Developer console enabled. Type 'help'."
+        );
+
+        setTimeout(() => {
+
+            devInput.focus();
+
+        }, 20);
+    }
+}
+
+
+function setWorldTime(hours){
+
+    let value =
+        Number(hours);
+
+    if(!Number.isFinite(value)){
+
+        devPrint(
+            "Usage: time <0-24>"
+        );
+
+        return;
+    }
+
+    value =
+        ((value % 24) + 24) % 24;
+
+    worldTime =
+        value;
+
+    updateSunMoon();
+
+    updateDayNight(0);
+
+    devPrint(
+        "World time set to " +
+        value.toFixed(2) +
+        ":00"
+    );
+}
+
+
+function executeDeveloperCommand(raw){
+
+    const command =
+        raw.trim();
+
+    if(!command)
+        return;
+
+    devPrint(command);
+
+    const parts =
+        command.split(/\s+/);
+
+    const name =
+        parts[0].toLowerCase();
+
+    const args =
+        parts.slice(1);
+
+
+    switch(name){
+
+        case "help":
+
+            devPrint(
+                "Commands:\n" +
+                "time <0-24>        Set world time\n" +
+                "speed <number>     Set player speed multiplier\n" +
+                "speed reset        Reset speed\n" +
+                "tp <x> <z>          Teleport player\n" +
+                "pos                 Show player position\n" +
+                "biome               Show current biome\n" +
+                "fps                 Show FPS estimate\nperf                Apply performance mode\n" +
+                "god                 Toggle collision bypass\n" +
+                "regen               Regenerate nearby chunks\n" +
+                "grass               Rebuild grass\n" +
+                "clear               Clear console"
+            );
+
+            break;
+
+
+        case "time":
+
+            setWorldTime(
+                args[0]
+            );
+
+            break;
+
+
+        case "speed":{
+
+            if(
+                args[0] &&
+                args[0].toLowerCase() === "reset"
+            ){
+
+                developerSpeedMultiplier =
+                    1;
+
+                devPrint(
+                    "Speed reset to 1.0x."
+                );
+
+                break;
+            }
+
+            const multiplier =
+                Number(args[0]);
+
+            if(
+                !Number.isFinite(multiplier) ||
+                multiplier <= 0
+            ){
+
+                devPrint(
+                    "Usage: speed <positive number>"
+                );
+
+                break;
+            }
+
+            developerSpeedMultiplier =
+                THREE.MathUtils.clamp(
+                    multiplier,
+                    .1,
+                    10
+                );
+
+            devPrint(
+                "Speed = " +
+                developerSpeedMultiplier.toFixed(2) +
+                "x"
+            );
+
+            break;
+        }
+
+
+        case "tp":{
+
+            const tx =
+                Number(args[0]);
+
+            const tz =
+                Number(args[1]);
+
+            if(
+                !Number.isFinite(tx) ||
+                !Number.isFinite(tz)
+            ){
+
+                devPrint(
+                    "Usage: tp <x> <z>"
+                );
+
+                break;
+            }
+
+            camera.position.x =
+                tx;
+
+            camera.position.z =
+                tz;
+
+            camera.position.y =
+                terrainHeight(
+                    tx,
+                    tz
+                ) + 1.7;
+
+            updateChunks();
+
+            devPrint(
+                "Teleported to " +
+                tx.toFixed(1) +
+                ", " +
+                tz.toFixed(1)
+            );
+
+            break;
+        }
+
+
+        case "pos":
+
+            devPrint(
+                "Position: x=" +
+                camera.position.x.toFixed(2) +
+                " y=" +
+                camera.position.y.toFixed(2) +
+                " z=" +
+                camera.position.z.toFixed(2)
+            );
+
+            break;
+
+
+        case "biome":{
+
+            const current =
+                biomeAt(
+                    camera.position.x,
+                    camera.position.z
+                );
+
+            devPrint(
+                "Biome: " + current
+            );
+
+            break;
+        }
+
+
+        case "fps":
+            devPrint("FPS command: use the browser Performance panel for an exact frame rate.");
+            break;
+
+
+
+        case "perf":
+
+            VIEW_DISTANCE = 1;
+            renderer.setPixelRatio(
+                Math.min(
+                    devicePixelRatio,
+                    1.0
+                )
+            );
+
+            renderer.shadowMap.enabled = false;
+
+            devPrint(
+                "Performance mode enabled: " +
+                "1-chunk radius, 1.0x pixel ratio, shadows off."
+            );
+
+            break;
+
+        case "god":
+
+            developerGodMode =
+                !developerGodMode;
+
+            devPrint(
+                "God/collision bypass: " +
+                (
+                    developerGodMode
+                        ? "ON"
+                        : "OFF"
+                )
+            );
+
+            break;
+
+
+        case "regen":
+
+            updateChunks();
+
+            devPrint(
+                "Nearby chunks refreshed."
+            );
+
+            break;
+
+
+        case "grass":
+
+            try{
+
+                createGrassField();
+                updateGrassField();
+
+                devPrint(
+                    "Grass field rebuilt."
+                );
+
+            }catch(error){
+
+                console.error(error);
+
+                devPrint(
+                    "Grass rebuild failed: " +
+                    error.message
+                );
+            }
+
+            break;
+
+
+        case "clear":
+
+            devOutput.textContent = "";
+
+            break;
+
+
+        default:
+
+            devPrint(
+                "Unknown command. Type 'help'."
+            );
+    }
+}
+
+
+if(devForm){
+
+    devForm.addEventListener(
+        "submit",
+        event => {
+
+            event.preventDefault();
+
+            executeDeveloperCommand(
+                devInput.value
+            );
+
+            devInput.value = "";
+        }
+    );
+}
+
+
+window.addEventListener(
+    "keydown",
+    event => {
+
+        if(
+            event.key === "F2" ||
+            event.key === "`" ||
+            event.key === "~"
+        ){
+
+            event.preventDefault();
+
+            toggleDeveloperConsole();
+
+            return;
+        }
+
+
+        if(
+            developerMode &&
+            document.activeElement === devInput
+        ){
+
+            if(event.key === "Escape"){
+
+                toggleDeveloperConsole();
+            }
+
+            return;
+        }
+    }
+);
+
 
 // ============================================================
 // MAIN LOOP
@@ -2851,7 +6104,7 @@ function animate(){
     lastTime=now;
 
 
-    if(gameStarted){
+    if(gameStarted && !gamePaused){
 
         updatePlayer(delta);
 
@@ -2860,6 +6113,14 @@ function animate(){
         updateNPCs(delta);
 
         updateDayNight(delta);
+
+        updateClouds(delta);
+
+        updateSunMoon();
+
+
+        updateGrassField(delta);
+        updateGameAudio(delta);
     }
 
 
@@ -2872,6 +6133,46 @@ function animate(){
 
 animate();
 
+</script>
+
+<div id="devConsole" aria-label="Developer console">
+    <div id="devConsoleHeader">
+        <span>DEVELOPER CONSOLE</span>
+        <span style="opacity:.65;font-size:11px">F2 / ~ to toggle</span>
+    </div>
+    <div id="devConsoleOutput"></div>
+    <form id="devConsoleForm">
+        <input
+            id="devConsoleInput"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="help"
+            aria-label="Developer command"
+        >
+        <button type="submit">Run</button>
+    </form>
+</div>
+
+<div id="fatalStartupError"></div>
+<script>
+window.addEventListener("error", function(event){
+    const box = document.getElementById("fatalStartupError");
+    if(box){
+        box.style.display = "block";
+        box.textContent =
+            "GAME STARTUP ERROR\\n" +
+            (event.error?.stack || event.message || "Unknown error");
+    }
+});
+window.addEventListener("unhandledrejection", function(event){
+    const box = document.getElementById("fatalStartupError");
+    if(box){
+        box.style.display = "block";
+        box.textContent =
+            "GAME STARTUP ERROR\\n" +
+            String(event.reason || "Unhandled promise rejection");
+    }
+});
 </script>
 </body>
 </html>
