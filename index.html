@@ -277,6 +277,148 @@ html,body{
     font:13px/1.5 Consolas,monospace;
     white-space:pre-wrap;
 }
+
+/* ============================================================
+   MOBILE GAME UI
+   ============================================================ */
+
+#mobileControls{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:9000;
+    pointer-events:none;
+    touch-action:none;
+    user-select:none;
+    -webkit-user-select:none;
+}
+
+body.mobileMode #mobileControls{
+    display:block;
+}
+
+#mobileJoystick{
+    position:absolute;
+    left:22px;
+    bottom:24px;
+    width:132px;
+    height:132px;
+    border-radius:50%;
+    background:rgba(255,255,255,.13);
+    border:2px solid rgba(255,255,255,.28);
+    box-shadow:0 6px 25px rgba(0,0,0,.25);
+    pointer-events:auto;
+    touch-action:none;
+}
+
+#mobileJoystickKnob{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:58px;
+    height:58px;
+    margin-left:-29px;
+    margin-top:-29px;
+    border-radius:50%;
+    background:rgba(255,255,255,.42);
+    border:2px solid rgba(255,255,255,.55);
+    box-shadow:0 4px 15px rgba(0,0,0,.25);
+    transform:translate3d(0,0,0);
+}
+
+#mobileLookArea{
+    position:absolute;
+    right:0;
+    top:0;
+    width:64%;
+    height:100%;
+    pointer-events:auto;
+    touch-action:none;
+}
+
+.mobileButton{
+    position:absolute;
+    width:58px;
+    height:58px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,.35);
+    background:rgba(15,20,25,.52);
+    color:white;
+    font:700 12px Arial,sans-serif;
+    box-shadow:0 5px 18px rgba(0,0,0,.28);
+    pointer-events:auto;
+    touch-action:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.mobileButton:active{
+    background:rgba(255,255,255,.3);
+    transform:scale(.94);
+}
+
+#mobileJump{
+    right:26px;
+    bottom:28px;
+}
+
+#mobileFlash{
+    right:98px;
+    bottom:92px;
+}
+
+#mobileInteract{
+    right:28px;
+    bottom:102px;
+}
+
+#mobilePause{
+    right:18px;
+    top:18px;
+    width:48px;
+    height:48px;
+}
+
+#mobileSprint{
+    left:170px;
+    bottom:32px;
+    width:62px;
+    height:52px;
+}
+
+#mobileHint{
+    position:absolute;
+    top:18px;
+    left:50%;
+    transform:translateX(-50%);
+    padding:7px 12px;
+    border-radius:20px;
+    background:rgba(0,0,0,.35);
+    color:rgba(255,255,255,.82);
+    font:11px Arial,sans-serif;
+    pointer-events:none;
+}
+
+@media (orientation: portrait){
+    #mobileHint::after{
+        content:" Rotate your phone for the best experience";
+    }
+}
+
+@media (orientation: landscape){
+    #mobileHint{
+        opacity:.55;
+    }
+}
+
+/* Hide desktop pointer-lock instructions/controls on phones. */
+body.mobileMode #desktopControls,
+body.mobileMode .desktopOnly,
+body.mobileMode #crosshair{
+    display:none !important;
+}
+
 </style>
 </head>
 
@@ -492,6 +634,38 @@ let lastAudioBiome = null;
 
 let gamePaused = false;
 
+let isMobileDevice =
+    /Android|iPhone|iPad|iPod|Windows Phone/i.test(
+        navigator.userAgent
+    ) ||
+    (
+        navigator.maxTouchPoints > 0 &&
+        window.matchMedia("(pointer: coarse)").matches
+    );
+
+let mobileMode = isMobileDevice;
+
+let mobileJoystick = {
+    active:false,
+    pointerId:null,
+    x:0,
+    y:0
+};
+
+let mobileLook = {
+    active:false,
+    pointerId:null,
+    lastX:0,
+    lastY:0
+};
+
+let mobileButtons = {
+    jump:false,
+    flashlight:false,
+    interact:false
+};
+
+
 let developerMode = false;
 let developerSpeedMultiplier = 1.0;
 let developerGodMode = false;
@@ -655,6 +829,9 @@ flashlight.target =
 
 
 createCloudLayer();
+
+applyMobilePerformance();
+try{ setupMobileControls(); }catch(error){ console.warn('Mobile controls disabled:', error); }
 
 createSunMoon();
 
@@ -1521,233 +1698,268 @@ function updateGroundDetail(detail){
 
 function createSunMoon(){
 
-    // Very lightweight meshes: no textures, no shadows.
-    sunMesh =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                10,
-                20,
-                14
-            ),
-            new THREE.MeshBasicMaterial({
-                color: 0xffe9a6
-            })
-        );
+    const sunCanvas = document.createElement("canvas");
+    sunCanvas.width = 128;
+    sunCanvas.height = 128;
 
-    moonMesh =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                6.5,
-                18,
-                12
-            ),
-            new THREE.MeshBasicMaterial({
-                color: 0xdce7ff,
-                transparent: true,
-                opacity: 0
-            })
-        );
+    const sctx = sunCanvas.getContext("2d");
+    const gradient = sctx.createRadialGradient(64,64,8,64,64,62);
 
+    gradient.addColorStop(0,"rgba(255,255,245,1)");
+    gradient.addColorStop(.55,"rgba(255,220,120,.98)");
+    gradient.addColorStop(1,"rgba(255,160,50,0)");
+
+    sctx.fillStyle = gradient;
+    sctx.fillRect(0,0,128,128);
+
+    const sunTexture = new THREE.CanvasTexture(sunCanvas);
+
+    sunMesh = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+            map:sunTexture,
+            transparent:true,
+            depthWrite:false,
+            depthTest:false,
+            fog:false
+        })
+    );
+
+    sunMesh.scale.set(38,38,1);
     scene.add(sunMesh);
+
+
+    const moonCanvas = document.createElement("canvas");
+    moonCanvas.width = 128;
+    moonCanvas.height = 128;
+
+    const mctx = moonCanvas.getContext("2d");
+
+    mctx.fillStyle = "#e9efff";
+    mctx.beginPath();
+    mctx.arc(64,64,38,0,Math.PI*2);
+    mctx.fill();
+
+    mctx.fillStyle = "rgba(150,160,185,.35)";
+
+    for(let i=0;i<8;i++){
+        const r=3+Math.random()*5;
+        mctx.beginPath();
+        mctx.arc(
+            40+Math.random()*48,
+            40+Math.random()*48,
+            r,
+            0,
+            Math.PI*2
+        );
+        mctx.fill();
+    }
+
+    const moonTexture = new THREE.CanvasTexture(moonCanvas);
+
+    moonMesh = new THREE.Sprite(
+        new THREE.SpriteMaterial({
+            map:moonTexture,
+            transparent:true,
+            opacity:0,
+            depthWrite:false,
+            depthTest:false,
+            fog:false
+        })
+    );
+
+    moonMesh.scale.set(25,25,1);
     scene.add(moonMesh);
 
 
-    // One cheap point-cloud for stars.
-    const count = 500;
-    const positions =
-        new Float32Array(count * 3);
+    const positions = new Float32Array(500*3);
 
-    const radius = 700;
+    for(let i=0;i<500;i++){
 
-    for(let i=0;i<count;i++){
+        const theta=Math.random()*Math.PI*2;
+        const phi=Math.random()*.8;
+        const radius=650;
 
-        const theta =
-            Math.random() * Math.PI * 2;
-
-        const phi =
-            Math.random() * Math.PI * .45;
-
-        positions[i*3] =
-            Math.cos(theta) *
-            Math.sin(phi) *
-            radius;
-
-        positions[i*3+1] =
-            Math.cos(phi) *
-            radius;
-
-        positions[i*3+2] =
-            Math.sin(theta) *
-            Math.sin(phi) *
-            radius;
+        positions[i*3]=Math.cos(theta)*Math.sin(phi)*radius;
+        positions[i*3+1]=Math.cos(phi)*radius;
+        positions[i*3+2]=Math.sin(theta)*Math.sin(phi)*radius;
     }
 
-    const geometry =
-        new THREE.BufferGeometry();
+    const geometry=new THREE.BufferGeometry();
 
     geometry.setAttribute(
         "position",
-        new THREE.BufferAttribute(
-            positions,
-            3
-        )
+        new THREE.BufferAttribute(positions,3)
     );
 
-    starField =
-        new THREE.Points(
-            geometry,
-            new THREE.PointsMaterial({
-                color: 0xffffff,
-                size: 1.5,
-                sizeAttenuation: false,
-                transparent: true,
-                opacity: 0,
-                depthWrite: false
-            })
-        );
+    starField=new THREE.Points(
+        geometry,
+        new THREE.PointsMaterial({
+            color:0xffffff,
+            size:1.5,
+            sizeAttenuation:false,
+            transparent:true,
+            opacity:0,
+            depthWrite:false,
+            depthTest:false,
+            fog:false
+        })
+    );
 
     scene.add(starField);
 }
 
-
 function updateSunMoon(){
 
-    if(
-        !sunMesh ||
-        !moonMesh
-    )
+    if(!sunMesh || !moonMesh)
         return;
 
-    // 0 = midnight, 6 = sunrise, 12 = noon,
-    // 18 = sunset, 24 = midnight.
+    // 0 midnight, 6 sunrise, 12 noon, 18 sunset.
     const angle =
-        (worldTime / 24) *
-        Math.PI * 2 -
-        Math.PI / 2;
+        (worldTime/24)*Math.PI*2 - Math.PI/2;
 
-    const radius = 520;
+    const radius=260;
 
-    const horizontal =
-        Math.cos(angle) * radius;
+    const horizontal=Math.cos(angle)*radius;
+    const vertical=Math.sin(angle)*radius;
 
-    const vertical =
-        Math.sin(angle) * radius;
+    const forward=new THREE.Vector3();
+    camera.getWorldDirection(forward);
 
-    // Keep the objects in front of the camera's infinite world.
-    sunMesh.position.set(
-        camera.position.x + horizontal,
-        camera.position.y + vertical,
-        camera.position.z - 260
+    forward.y=0;
+
+    if(forward.lengthSq()<0.001)
+        forward.set(0,0,-1);
+
+    forward.normalize();
+
+    const right=new THREE.Vector3(
+        -forward.z,
+        0,
+        forward.x
     );
 
-    moonMesh.position.set(
-        camera.position.x - horizontal,
-        camera.position.y - vertical,
-        camera.position.z - 260
+    // Keep celestial objects in front of the camera so they are
+    // immediately visible during testing.
+    sunMesh.position.copy(camera.position);
+    sunMesh.position.addScaledVector(forward,220);
+    sunMesh.position.addScaledVector(right,horizontal);
+    sunMesh.position.y += vertical+95;
+
+    moonMesh.position.copy(camera.position);
+    moonMesh.position.addScaledVector(forward,220);
+    moonMesh.position.addScaledVector(right,-horizontal);
+    moonMesh.position.y += -vertical+95;
+
+    const daylight=THREE.MathUtils.clamp(
+        Math.sin(angle)*.5+.5,
+        0,
+        1
     );
 
+    const night=1-daylight;
 
-    // Daylight amount.
-    const daylight =
-        THREE.MathUtils.clamp(
-            Math.sin(angle) * .5 + .5,
-            0,
-            1
-        );
+    sunMesh.visible=daylight>.03;
+    moonMesh.visible=night>.04;
 
-    const night =
-        1 - daylight;
+    sunMesh.material.opacity=
+        THREE.MathUtils.clamp(daylight*1.15,0,1);
 
+    moonMesh.material.opacity=
+        THREE.MathUtils.clamp(night,0,.95);
 
-    // Sun disappears below the horizon at night.
-    sunMesh.visible =
-        vertical > -40;
-
-    // Moon fades in as daylight fades out.
-    moonMesh.visible =
-        night > .08;
-
-    moonMesh.material.opacity =
-        THREE.MathUtils.clamp(
-            night * 1.1,
-            0,
-            .9
-        );
-
-
-    // Warm sunrise/sunset, bright midday.
-    if(daylight < .35){
-
-        sunMesh.material.color.setHex(
-            0xffa95b
-        );
-
-    }else{
-
-        sunMesh.material.color.setHex(
-            0xffe9a6
-        );
-    }
-
+    if(daylight<.3)
+        sunMesh.material.color.setHex(0xffb45e);
+    else
+        sunMesh.material.color.setHex(0xffffff);
 
     if(starField){
 
-        starField.position.set(
-            camera.position.x,
-            camera.position.y,
-            camera.position.z
-        );
+        starField.position.copy(camera.position);
 
-        starField.material.opacity =
-            THREE.MathUtils.clamp(
-                night * .9,
-                0,
-                .9
-            );
+        starField.material.opacity=
+            Math.min(.9,night);
     }
 }
 
 
 // ============================================================
-// TERRAIN FUNCTIONS
+// CONTINENT NOISE
 // ============================================================
+// Lightweight deterministic value noise used by biomeAt().
+// Kept self-contained so the game can start without external
+// noise-library globals.
+function continentNoise(x, z){
 
-function continentNoise(x,z){
+    function hash(ix, iz){
 
-    return (
-        Math.sin(x*.0018) * .5 +
-        Math.cos(z*.0016) * .5 +
-        Math.sin((x-z)*.0009) * .25
-    );
-}
+        let h =
+            Math.imul(
+                ix | 0,
+                374761393
+            ) ^
+            Math.imul(
+                iz | 0,
+                668265263
+            );
 
+        h =
+            (h ^ (h >>> 13)) | 0;
 
-function mountainNoise(x,z){
+        h =
+            Math.imul(
+                h,
+                1274126177
+            );
 
-    // Smooth, bounded terrain relief.
-    // The old version could change height too aggressively between
-    // neighboring vertices, producing the giant floating/vertical
-    // strips visible in the screenshots.
+        h =
+            (h ^ (h >>> 16)) | 0;
+
+        return (
+            (h >>> 0) / 4294967295
+        );
+    }
+
+    const ix =
+        Math.floor(x);
+
+    const iz =
+        Math.floor(z);
+
+    const fx =
+        x - ix;
+
+    const fz =
+        z - iz;
+
+    const smooth =
+        t => t * t * (3 - 2 * t);
+
+    const sx =
+        smooth(fx);
+
+    const sz =
+        smooth(fz);
 
     const a =
-        Math.sin(x * .0028) *
-        Math.cos(z * .0024);
+        hash(ix, iz);
 
     const b =
-        Math.sin(x * .0065 + z * .0031) *
-        .5;
+        hash(ix + 1, iz);
 
     const c =
-        Math.sin(x * .014 - z * .011) *
-        .18;
+        hash(ix, iz + 1);
 
-    const ridge =
-        Math.pow(Math.abs(a), 2.2);
+    const d =
+        hash(ix + 1, iz + 1);
+
+    const ab =
+        a + (b - a) * sx;
+
+    const cd =
+        c + (d - c) * sx;
 
     return (
-        ridge * 10 +
-        b * 2 +
-        c
+        ab + (cd - ab) * sz
     );
 }
 
@@ -1816,6 +2028,48 @@ function isRiver(x,z){
     return riverValue(x,z) < .035;
 }
 
+
+
+// ============================================================
+// MOUNTAIN NOISE
+// ============================================================
+// Lightweight multi-octave terrain noise. No external dependency.
+function mountainNoise(x,z){
+
+    let value = 0;
+    let amplitude = 1;
+    let frequency = 0.0018;
+    let total = 0;
+
+    for(let octave=0; octave<4; octave++){
+
+        value +=
+            (
+                noise(
+                    x * frequency,
+                    z * frequency
+                ) * 2 - 1
+            ) * amplitude;
+
+        total += amplitude;
+
+        amplitude *= .5;
+        frequency *= 2;
+    }
+
+    // Shape the noise so it creates broad rugged rises
+    // rather than sharp artificial spikes.
+    const normalized =
+        value / total;
+
+    return (
+        Math.sign(normalized) *
+        Math.pow(
+            Math.abs(normalized),
+            1.35
+        )
+    ) * 3.2;
+}
 
 function terrainHeight(x,z){
 
@@ -5671,6 +5925,555 @@ window.addEventListener("unhandledrejection", (event) => {
 // ./audio/night_ambience.mp3
 
 
+
+// ============================================================
+// MOBILE MODE
+// ============================================================
+
+function applyMobilePerformance(){
+
+    if(!mobileMode)
+        return;
+
+    document.body.classList.add(
+        "mobileMode"
+    );
+
+    // Browser/WebGL friendly mobile defaults.
+    VIEW_DISTANCE = 1;
+
+    if(
+        typeof renderer !== "undefined" &&
+        renderer
+    ){
+
+        renderer.setPixelRatio(
+            Math.min(
+                window.devicePixelRatio || 1,
+                1.0
+            )
+        );
+
+        renderer.shadowMap.enabled =
+            false;
+    }
+
+    // Mobile should not try to keep desktop-sized chunks around.
+    if(
+        typeof CHUNK_SIZE !== "undefined" &&
+        typeof VIEW_DISTANCE !== "undefined"
+    ){
+
+        // Existing chunk logic will respect VIEW_DISTANCE.
+    }
+
+    // Avoid desktop mouse capture on touch devices.
+    if(
+        typeof controls !== "undefined" &&
+        controls
+    ){
+
+        try{
+            controls.unlock();
+        }catch(error){}
+    }
+}
+
+
+function setupMobileControls(){
+
+    if(!mobileMode)
+        return;
+
+    const joystick =
+        document.getElementById(
+            "mobileJoystick"
+        );
+
+    const knob =
+        document.getElementById(
+            "mobileJoystickKnob"
+        );
+
+    const lookArea =
+        document.getElementById(
+            "mobileLookArea"
+        );
+
+    const jump =
+        document.getElementById(
+            "mobileJump"
+        );
+
+    const flash =
+        document.getElementById(
+            "mobileFlash"
+        );
+
+    const interact =
+        document.getElementById(
+            "mobileInteract"
+        );
+
+    const pause =
+        document.getElementById(
+            "mobilePause"
+        );
+
+    const sprint =
+        document.getElementById(
+            "mobileSprint"
+        );
+
+    if(!joystick || !knob || !lookArea)
+        return;
+
+
+    const resetJoystick = () => {
+
+        mobileJoystick.active =
+            false;
+
+        mobileJoystick.pointerId =
+            null;
+
+        mobileJoystick.x = 0;
+        mobileJoystick.y = 0;
+
+        knob.style.transform =
+            "translate3d(0,0,0)";
+    };
+
+
+    const updateJoystick =
+        event => {
+
+            const rect =
+                joystick.getBoundingClientRect();
+
+            const cx =
+                rect.left +
+                rect.width / 2;
+
+            const cy =
+                rect.top +
+                rect.height / 2;
+
+            let dx =
+                event.clientX - cx;
+
+            let dy =
+                event.clientY - cy;
+
+            const max =
+                rect.width * .32;
+
+            const length =
+                Math.hypot(
+                    dx,
+                    dy
+                );
+
+            if(length > max){
+
+                dx =
+                    dx / length * max;
+
+                dy =
+                    dy / length * max;
+            }
+
+            mobileJoystick.x =
+                dx / max;
+
+            mobileJoystick.y =
+                dy / max;
+
+            knob.style.transform =
+                `translate3d(${dx}px,${dy}px,0)`;
+        };
+
+
+    joystick.addEventListener(
+        "pointerdown",
+        event => {
+
+            event.preventDefault();
+
+            mobileJoystick.active =
+                true;
+
+            mobileJoystick.pointerId =
+                event.pointerId;
+
+            joystick.setPointerCapture(
+                event.pointerId
+            );
+
+            updateJoystick(event);
+        },
+        {passive:false}
+    );
+
+
+    joystick.addEventListener(
+        "pointermove",
+        event => {
+
+            if(
+                !mobileJoystick.active ||
+                event.pointerId !==
+                    mobileJoystick.pointerId
+            )
+                return;
+
+            event.preventDefault();
+
+            updateJoystick(event);
+        },
+        {passive:false}
+    );
+
+
+    joystick.addEventListener(
+        "pointerup",
+        event => {
+
+            if(
+                event.pointerId ===
+                mobileJoystick.pointerId
+            )
+                resetJoystick();
+        }
+    );
+
+
+    joystick.addEventListener(
+        "pointercancel",
+        resetJoystick
+    );
+
+
+    // Touch-look area.
+    lookArea.addEventListener(
+        "pointerdown",
+        event => {
+
+            event.preventDefault();
+
+            mobileLook.active =
+                true;
+
+            mobileLook.pointerId =
+                event.pointerId;
+
+            mobileLook.lastX =
+                event.clientX;
+
+            mobileLook.lastY =
+                event.clientY;
+
+            lookArea.setPointerCapture(
+                event.pointerId
+            );
+        },
+        {passive:false}
+    );
+
+
+    lookArea.addEventListener(
+        "pointermove",
+        event => {
+
+            if(
+                !mobileLook.active ||
+                event.pointerId !==
+                    mobileLook.pointerId
+            )
+                return;
+
+            event.preventDefault();
+
+            const dx =
+                event.clientX -
+                mobileLook.lastX;
+
+            const dy =
+                event.clientY -
+                mobileLook.lastY;
+
+            mobileLook.lastX =
+                event.clientX;
+
+            mobileLook.lastY =
+                event.clientY;
+
+            if(
+                typeof yaw !== "undefined"
+            )
+                yaw -= dx * .004;
+
+            if(
+                typeof pitch !== "undefined"
+            )
+                pitch -= dy * .004;
+
+            if(
+                typeof camera !== "undefined"
+            ){
+
+                pitch =
+                    THREE.MathUtils.clamp(
+                        pitch,
+                        -1.35,
+                        1.35
+                    );
+
+                camera.rotation.set(
+                    pitch,
+                    yaw,
+                    0,
+                    "YXZ"
+                );
+            }
+        },
+        {passive:false}
+    );
+
+
+    const endLook = event => {
+
+        if(
+            event.pointerId ===
+            mobileLook.pointerId
+        ){
+
+            mobileLook.active =
+                false;
+
+            mobileLook.pointerId =
+                null;
+        }
+    };
+
+    lookArea.addEventListener(
+        "pointerup",
+        endLook
+    );
+
+    lookArea.addEventListener(
+        "pointercancel",
+        endLook
+    );
+
+
+    function bindButton(
+        element,
+        callback
+    ){
+
+        if(!element)
+            return;
+
+        element.addEventListener(
+            "pointerdown",
+            event => {
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                callback(true);
+            },
+            {passive:false}
+        );
+
+        element.addEventListener(
+            "pointerup",
+            event => {
+
+                event.preventDefault();
+
+                callback(false);
+            },
+            {passive:false}
+        );
+
+        element.addEventListener(
+            "pointercancel",
+            () => callback(false)
+        );
+    }
+
+
+    bindButton(
+        jump,
+        pressed => {
+
+            mobileButtons.jump =
+                pressed;
+
+            if(pressed){
+                keys.Space = true;
+
+                setTimeout(
+                    () => {
+                        keys.Space = false;
+                    },
+                    120
+                );
+            }
+        }
+    );
+
+
+    bindButton(
+        flash,
+        pressed => {
+
+            if(pressed){
+                keys.KeyF = true;
+
+                setTimeout(
+                    () => {
+                        keys.KeyF = false;
+                    },
+                    80
+                );
+            }
+        }
+    );
+
+
+    bindButton(
+        interact,
+        pressed => {
+
+            if(pressed){
+                keys.KeyE = true;
+
+                setTimeout(
+                    () => {
+                        keys.KeyE = false;
+                    },
+                    80
+                );
+            }
+        }
+    );
+
+
+    bindButton(
+        sprint,
+        pressed => {
+
+            mobileButtons.sprint =
+                pressed;
+        }
+    );
+
+
+    if(pause){
+
+        pause.addEventListener(
+            "pointerdown",
+            event => {
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                if(
+                    typeof gamePaused !==
+                        "undefined"
+                ){
+
+                    gamePaused =
+                        !gamePaused;
+
+                    const menu =
+                        document.getElementById(
+                            "pauseMenu"
+                        );
+
+                    if(menu)
+                        menu.style.display =
+                            gamePaused
+                                ? "flex"
+                                : "none";
+                }
+            },
+            {passive:false}
+        );
+    }
+}
+
+
+function updateMobileMovement(){
+
+    if(!mobileMode)
+        return;
+
+    if(
+        typeof keys === "undefined"
+    )
+        return;
+
+    // Map joystick to the same movement keys used by desktop.
+    keys.KeyW =
+        mobileJoystick.y < -.18;
+
+    keys.KeyS =
+        mobileJoystick.y > .18;
+
+    keys.KeyA =
+        mobileJoystick.x < -.18;
+
+    keys.KeyD =
+        mobileJoystick.x > .18;
+
+    keys.ShiftLeft =
+        !!mobileButtons.sprint;
+}
+
+
+function mobileResize(){
+
+    if(!mobileMode)
+        return;
+
+    if(
+        typeof renderer !== "undefined" &&
+        renderer &&
+        typeof camera !== "undefined"
+    ){
+
+        const width =
+            window.innerWidth;
+
+        const height =
+            window.innerHeight;
+
+        camera.aspect =
+            width / height;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setPixelRatio(
+            Math.min(
+                window.devicePixelRatio || 1,
+                1.0
+            )
+        );
+
+        renderer.setSize(
+            width,
+            height,
+            false
+        );
+    }
+}
+
+
+
 // ============================================================
 // DEVELOPER CONSOLE
 // ============================================================
@@ -6121,6 +6924,8 @@ function animate(){
 
         updateGrassField(delta);
         updateGameAudio(delta);
+
+        updateMobileMovement();
     }
 
 
@@ -6160,7 +6965,7 @@ window.addEventListener("error", function(event){
     if(box){
         box.style.display = "block";
         box.textContent =
-            "GAME STARTUP ERROR\\n" +
+            "GAME STARTUP ERROR\n" +
             (event.error?.stack || event.message || "Unknown error");
     }
 });
@@ -6169,10 +6974,55 @@ window.addEventListener("unhandledrejection", function(event){
     if(box){
         box.style.display = "block";
         box.textContent =
-            "GAME STARTUP ERROR\\n" +
+            "GAME STARTUP ERROR\n" +
             String(event.reason || "Unhandled promise rejection");
     }
 });
 </script>
+
+<!-- ============================================================
+     MOBILE CONTROLS
+     ============================================================ -->
+<div id="mobileControls">
+    <div id="mobileLookArea"></div>
+
+    <div id="mobileJoystick">
+        <div id="mobileJoystickKnob"></div>
+    </div>
+
+    <button id="mobileSprint" class="mobileButton">RUN</button>
+    <button id="mobileJump" class="mobileButton">JUMP</button>
+    <button id="mobileFlash" class="mobileButton">LIGHT</button>
+    <button id="mobileInteract" class="mobileButton">USE</button>
+    <button id="mobilePause" class="mobileButton">Ⅱ</button>
+
+    <div id="mobileHint">
+        TOUCH + DRAG TO LOOK
+    </div>
+</div>
+
 </body>
 </html>
+<script>
+window.addEventListener(
+    "resize",
+    function(){
+        if(typeof mobileResize === "function")
+            mobileResize();
+    }
+);
+
+document.addEventListener(
+    "touchmove",
+    function(event){
+        if(
+            document.body.classList.contains(
+                "mobileMode"
+            )
+        ){
+            event.preventDefault();
+        }
+    },
+    {passive:false}
+);
+</script>
