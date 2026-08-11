@@ -830,8 +830,15 @@ flashlight.target =
 
 createCloudLayer();
 
-applyMobilePerformance();
-try{ setupMobileControls(); }catch(error){ console.warn('Mobile controls disabled:', error); }
+try{
+    applyMobilePerformance();
+    setupMobileControls();
+}catch(error){
+    console.warn(
+        "Mobile setup partially disabled:",
+        error
+    );
+}
 
 createSunMoon();
 
@@ -5967,16 +5974,9 @@ function applyMobilePerformance(){
         // Existing chunk logic will respect VIEW_DISTANCE.
     }
 
-    // Avoid desktop mouse capture on touch devices.
-    if(
-        typeof controls !== "undefined" &&
-        controls
-    ){
-
-        try{
-            controls.unlock();
-        }catch(error){}
-    }
+    // Do not touch the desktop controls here. PointerLockControls is
+    // initialized later in the module and accessing it now would trigger
+    // a temporal-dead-zone ReferenceError on mobile browsers.
 }
 
 
