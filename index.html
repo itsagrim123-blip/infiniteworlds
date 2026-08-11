@@ -659,6 +659,9 @@ let mobileLook = {
     lastY:0
 };
 
+let mobileLookYaw = 0;
+let mobileLookPitch = 0;
+
 let mobileButtons = {
     jump:false,
     flashlight:false,
@@ -5985,6 +5988,17 @@ function setupMobileControls(){
     if(!mobileMode)
         return;
 
+    if(
+        typeof camera !== "undefined" &&
+        camera
+    ){
+        mobileLookYaw =
+            camera.rotation.y || 0;
+
+        mobileLookPitch =
+            camera.rotation.x || 0;
+    }
+
     const joystick =
         document.getElementById(
             "mobileJoystick"
@@ -6208,30 +6222,30 @@ function setupMobileControls(){
             mobileLook.lastY =
                 event.clientY;
 
-            if(
-                typeof yaw !== "undefined"
-            )
-                yaw -= dx * .004;
+            // Mobile look has its own camera angles. Do not access the
+            // desktop `pitch`/`yaw` bindings here because this handler can
+            // run before those bindings are initialized.
+            mobileLookYaw -=
+                dx * .004;
+
+            mobileLookPitch -=
+                dy * .004;
+
+            mobileLookPitch =
+                THREE.MathUtils.clamp(
+                    mobileLookPitch,
+                    -1.35,
+                    1.35
+                );
 
             if(
-                typeof pitch !== "undefined"
-            )
-                pitch -= dy * .004;
-
-            if(
-                typeof camera !== "undefined"
+                typeof camera !== "undefined" &&
+                camera
             ){
 
-                pitch =
-                    THREE.MathUtils.clamp(
-                        pitch,
-                        -1.35,
-                        1.35
-                    );
-
                 camera.rotation.set(
-                    pitch,
-                    yaw,
+                    mobileLookPitch,
+                    mobileLookYaw,
                     0,
                     "YXZ"
                 );
