@@ -1,0 +1,2877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>INFINITE FRONTIER</title>
+
+<style>
+*{box-sizing:border-box}
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+    font-family:Arial,sans-serif;
+}
+#game{position:fixed;inset:0}
+#crosshair{
+    position:fixed;
+    left:50%;
+    top:50%;
+    width:7px;
+    height:7px;
+    transform:translate(-50%,-50%);
+    border:1px solid white;
+    border-radius:50%;
+    z-index:20;
+    pointer-events:none;
+}
+#hud{
+    position:fixed;
+    left:18px;
+    top:16px;
+    z-index:30;
+    color:#fff;
+    font-size:13px;
+    line-height:1.6;
+    text-shadow:0 2px 5px #000;
+    pointer-events:none;
+}
+#hud b{font-size:16px;letter-spacing:2px}
+#status{
+    position:fixed;
+    left:50%;
+    bottom:30px;
+    transform:translateX(-50%);
+    color:#fff;
+    z-index:40;
+    text-shadow:0 2px 5px #000;
+    opacity:0;
+    transition:opacity .25s;
+    pointer-events:none;
+}
+#start{
+    position:fixed;
+    inset:0;
+    z-index:100;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    background:
+        radial-gradient(circle at center,
+        rgba(30,50,60,.2),
+        rgba(0,0,0,.94));
+    color:#fff;
+}
+#start h1{
+    margin:0;
+    font-size:58px;
+    letter-spacing:10px;
+    text-align:center;
+}
+#start p{
+    color:#bbb;
+    margin:15px 0 25px;
+}
+button{
+    padding:13px 30px;
+    margin:5px;
+    background:rgba(255,255,255,.08);
+    border:1px solid #fff;
+    color:#fff;
+    cursor:pointer;
+    border-radius:5px;
+}
+button:hover{
+    background:#fff;
+    color:#000;
+}
+#loading{
+    position:fixed;
+    inset:0;
+    z-index:200;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    background:#000;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game"></div>
+<div id="crosshair"></div>
+
+<div id="hud">
+    <b>INFINITE FRONTIER</b><br>
+    WASD — Move &nbsp; SHIFT — Sprint<br>
+    Mouse — Look &nbsp; F — Flashlight<br>
+    L — Save &nbsp; O — Load &nbsp; ESC — Menu<br>
+    <span id="info"></span>
+</div>
+
+<div id="status"></div>
+
+<div id="start">
+    <h1>INFINITE FRONTIER</h1>
+    <p>Procedural exploration • Forest • Desert • Snow</p>
+    <div>
+        <button id="enter">ENTER WORLD</button>
+        <button id="loadStart">LOAD SAVE</button>
+    </div>
+</div>
+
+<div id="loading">GENERATING WORLD...</div>
+
+<script type="module">
+
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js";
+
+import { PointerLockControls } from
+"https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/controls/PointerLockControls.js";
+
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+
+const CHUNK_SIZE = 100;
+const VIEW_DISTANCE = 3;
+const WORLD_SEED = 918273645;
+
+const PLAYER_HEIGHT = 2;
+const WALK_SPEED = 8;
+const SPRINT_SPEED = 15;
+
+const chunks = new Map();
+const npcs = [];
+const generatedNPCIds = new Set();
+
+let flashlightOn = false;
+let gameStarted = false;
+let worldTime = 8.0;
+
+let lastTime = performance.now();
+
+
+// ============================================================
+// SCENE
+// ============================================================
+
+const scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0x86b9dc);
+
+scene.fog = new THREE.Fog(
+    0x86b9dc,
+    120,
+    600
+);
+
+
+const camera = new THREE.PerspectiveCamera(
+    75,
+    innerWidth / innerHeight,
+    .1,
+    1200
+);
+
+camera.position.set(
+    0,
+    PLAYER_HEIGHT,
+    8
+);
+
+
+const renderer =
+    new THREE.WebGLRenderer({
+        antialias:true,
+        powerPreference:"high-performance"
+    });
+
+renderer.setSize(
+    innerWidth,
+    innerHeight
+);
+
+renderer.setPixelRatio(
+    Math.min(devicePixelRatio,2)
+);
+
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type =
+    THREE.PCFSoftShadowMap;
+
+renderer.outputColorSpace =
+    THREE.SRGBColorSpace;
+
+renderer.toneMapping =
+    THREE.ACESFilmicToneMapping;
+
+renderer.toneMappingExposure = 1.05;
+
+document
+    .getElementById("game")
+    .appendChild(renderer.domElement);
+
+
+// ============================================================
+// LIGHTING
+// ============================================================
+
+const skyLight =
+    new THREE.HemisphereLight(
+        0xbddcff,
+        0x526044,
+        1.5
+    );
+
+scene.add(skyLight);
+
+
+const sun =
+    new THREE.DirectionalLight(
+        0xfff1cf,
+        2.8
+    );
+
+sun.position.set(
+    150,
+    220,
+    80
+);
+
+sun.castShadow = true;
+
+sun.shadow.mapSize.width = 2048;
+sun.shadow.mapSize.height = 2048;
+
+sun.shadow.camera.left = -180;
+sun.shadow.camera.right = 180;
+sun.shadow.camera.top = 180;
+sun.shadow.camera.bottom = -180;
+
+sun.shadow.camera.near = 10;
+sun.shadow.camera.far = 600;
+
+scene.add(sun);
+
+
+// ============================================================
+// FLASHLIGHT
+// ============================================================
+
+const flashlight =
+    new THREE.SpotLight(
+        0xffffff,
+        0,
+        65,
+        Math.PI / 7,
+        .55,
+        1.2
+    );
+
+flashlight.position.set(
+    0,
+    0,
+    0
+);
+
+flashlight.castShadow = true;
+
+flashlight.shadow.mapSize.width = 1024;
+flashlight.shadow.mapSize.height = 1024;
+
+camera.add(flashlight);
+
+scene.add(camera);
+
+
+const flashlightTarget =
+    new THREE.Object3D();
+
+flashlightTarget.position.set(
+    0,
+    0,
+    -30
+);
+
+camera.add(flashlightTarget);
+
+flashlight.target =
+    flashlightTarget;
+
+
+// ============================================================
+// CONTROLS
+// ============================================================
+
+const controls =
+    new PointerLockControls(
+        camera,
+        document.body
+    );
+
+
+// ============================================================
+// SEEDED RANDOM
+// ============================================================
+
+function hash(x,z,extra=0){
+
+    let n =
+        Math.floor(x) * 374761393 +
+        Math.floor(z) * 668265263 +
+        WORLD_SEED * 1442695041 +
+        extra * 1013904223;
+
+    n =
+        (n ^ (n >>> 13)) * 1274126177;
+
+    n ^=
+        n >>> 16;
+
+    return (
+        (n >>> 0) / 4294967296
+    );
+}
+
+
+function rand(x,z,min,max,extra=0){
+
+    return min +
+        hash(x,z,extra) *
+        (max-min);
+}
+
+
+function noise(x,z){
+
+    const x0 = Math.floor(x);
+    const z0 = Math.floor(z);
+
+    const sx = x-x0;
+    const sz = z-z0;
+
+    const a = hash(x0,z0);
+    const b = hash(x0+1,z0);
+    const c = hash(x0,z0+1);
+    const d = hash(x0+1,z0+1);
+
+    const ux = sx*sx*(3-2*sx);
+    const uz = sz*sz*(3-2*sz);
+
+    return THREE.MathUtils.lerp(
+        THREE.MathUtils.lerp(a,b,ux),
+        THREE.MathUtils.lerp(c,d,ux),
+        uz
+    );
+}
+
+
+// ============================================================
+// TERRAIN FUNCTIONS
+// ============================================================
+
+function continentNoise(x,z){
+
+    return (
+        Math.sin(x*.0018) * .5 +
+        Math.cos(z*.0016) * .5 +
+        Math.sin((x-z)*.0009) * .25
+    );
+}
+
+
+function mountainNoise(x,z){
+
+    const large =
+        Math.abs(
+            Math.sin(x*.0042) *
+            Math.cos(z*.0037)
+        );
+
+    const detail =
+        Math.abs(
+            Math.sin(x*.019) *
+            Math.cos(z*.021)
+        );
+
+    return (
+        large * large * 30 +
+        detail * 5
+    );
+}
+
+
+function biomeAt(x,z){
+
+    const n =
+        continentNoise(x,z);
+
+    const b =
+        noise(
+            x*.004,
+            z*.004
+        );
+
+    /*
+        Forest:
+        most of the world
+
+        Desert:
+        dry low-frequency areas
+
+        Snow:
+        cold high-frequency regions
+    */
+
+    if(
+        Math.sin(z*.0017 + x*.0004) +
+        b*.8 > 1.15
+    ){
+        return "snow";
+    }
+
+    if(
+        Math.cos(x*.0014 - z*.0007) +
+        b*.5 < -0.95
+    ){
+        return "desert";
+    }
+
+    return "forest";
+}
+
+
+function riverValue(x,z){
+
+    const a =
+        Math.sin(
+            x*.006 +
+            Math.sin(z*.002)*3
+        );
+
+    const b =
+        Math.sin(
+            z*.0032 +
+            x*.0015
+        );
+
+    return Math.abs(
+        a*.65 + b*.35
+    );
+}
+
+
+function isRiver(x,z){
+
+    return riverValue(x,z) < .035;
+}
+
+
+function terrainHeight(x,z){
+
+    let h = 0;
+
+    const biome =
+        biomeAt(x,z);
+
+    // rolling terrain
+    h +=
+        Math.sin(x*.012) *
+        Math.cos(z*.011) *
+        2.5;
+
+    h +=
+        Math.sin((x+z)*.004) *
+        3;
+
+    // mountains exist as terrain,
+    // but are NOT a biome
+    h += mountainNoise(x,z);
+
+    // deserts flatter
+    if(biome === "desert")
+        h *= .45;
+
+    // snow slightly smoother
+    if(biome === "snow")
+        h *= .8;
+
+    // river carving
+    const rv =
+        riverValue(x,z);
+
+    if(rv < .07){
+
+        const riverDepth =
+            THREE.MathUtils.mapLinear(
+                rv,
+                0,
+                .07,
+                3.5,
+                0
+            );
+
+        h -= riverDepth;
+    }
+
+    return h;
+}
+
+
+// ============================================================
+// MATERIALS
+// ============================================================
+
+function mat(color,roughness=1){
+
+    return new THREE.MeshStandardMaterial({
+        color,
+        roughness,
+        metalness:0
+    });
+}
+
+
+const forestGround =
+    mat(0x426d38);
+
+const desertGround =
+    mat(0xc8a363);
+
+const snowGround =
+    mat(0xe8edf0);
+
+const riverMaterial =
+    new THREE.MeshStandardMaterial({
+        color:0x377da5,
+        roughness:.15,
+        metalness:.05,
+        transparent:true,
+        opacity:.88
+    });
+
+const barkDark =
+    mat(0x39251b);
+
+const bark =
+    mat(0x65432b);
+
+const leaves =
+    mat(0x285f2d);
+
+const leavesLight =
+    mat(0x3f8035);
+
+const snowLeaves =
+    mat(0xbfd1d3);
+
+const desertWall =
+    mat(0xb98652);
+
+const forestWall =
+    mat(0xbda98a);
+
+const snowWall =
+    mat(0xd5d9dc);
+
+const roof =
+    mat(0x493a34);
+
+const roofSnow =
+    mat(0xeeeeee);
+
+const woodFloor =
+    mat(0x694a32);
+
+const darkMetal =
+    mat(0x292b2d);
+
+const glass =
+    new THREE.MeshStandardMaterial({
+        color:0x7db7ca,
+        transparent:true,
+        opacity:.55,
+        roughness:.2
+    });
+
+
+// ============================================================
+// TREE SYSTEM
+// ============================================================
+
+function createPineTree(
+    x,
+    y,
+    z,
+    scale,
+    snowy=false
+){
+
+    const g =
+        new THREE.Group();
+
+    const trunk =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                .25*scale,
+                .48*scale,
+                4.5*scale,
+                8
+            ),
+            bark
+        );
+
+    trunk.position.y =
+        2.25*scale;
+
+    trunk.castShadow = true;
+
+    g.add(trunk);
+
+
+    for(let i=0;i<4;i++){
+
+        const radius =
+            (2.5 - i*.42)*scale;
+
+        const cone =
+            new THREE.Mesh(
+                new THREE.ConeGeometry(
+                    radius,
+                    (3.3 - i*.15)*scale,
+                    9
+                ),
+                snowy ?
+                    snowLeaves :
+                    leaves
+            );
+
+        cone.position.y =
+            (4+i*1.25)*scale;
+
+        cone.castShadow = true;
+
+        g.add(cone);
+    }
+
+
+    g.position.set(x,y,z);
+
+    g.rotation.y =
+        rand(
+            Math.floor(x),
+            Math.floor(z),
+            0,
+            Math.PI*2,
+            44
+        );
+
+    return g;
+}
+
+
+function createOakTree(
+    x,
+    y,
+    z,
+    scale
+){
+
+    const g =
+        new THREE.Group();
+
+    const trunk =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                .3*scale,
+                .55*scale,
+                5*scale,
+                8
+            ),
+            barkDark
+        );
+
+    trunk.position.y =
+        2.5*scale;
+
+    trunk.castShadow = true;
+
+    g.add(trunk);
+
+
+    for(let i=0;i<6;i++){
+
+        const leaf =
+            new THREE.Mesh(
+                new THREE.IcosahedronGeometry(
+                    (1.6 + rand(
+                        x+i,
+                        z-i,
+                        -.3,
+                        .5,
+                        22
+                    ))*scale,
+                    1
+                ),
+                i%2 ?
+                    leaves :
+                    leavesLight
+            );
+
+        leaf.position.set(
+            (Math.sin(i*2.7)*1.4)*scale,
+            (4.8 + (i%3)*.7)*scale,
+            (Math.cos(i*1.8)*1.4)*scale
+        );
+
+        leaf.castShadow = true;
+
+        g.add(leaf);
+    }
+
+
+    g.position.set(
+        x,y,z
+    );
+
+    return g;
+}
+
+
+function createCactus(
+    x,y,z,scale
+){
+
+    const g =
+        new THREE.Group();
+
+    const cactusMat =
+        mat(0x467844);
+
+
+    const main =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                .35*scale,
+                .45*scale,
+                4*scale,
+                8
+            ),
+            cactusMat
+        );
+
+    main.position.y =
+        2*scale;
+
+    g.add(main);
+
+
+    const arm =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                .18*scale,
+                .25*scale,
+                1.8*scale,
+                7
+            ),
+            cactusMat
+        );
+
+    arm.position.set(
+        .65*scale,
+        2.3*scale,
+        0
+    );
+
+    arm.rotation.z =
+        Math.PI/2;
+
+    g.add(arm);
+
+
+    const top =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .27*scale,
+                8,
+                6
+            ),
+            cactusMat
+        );
+
+    top.position.set(
+        1.55*scale,
+        2.3*scale,
+        0
+    );
+
+    g.add(top);
+
+
+    g.position.set(
+        x,y,z
+    );
+
+    return g;
+}
+
+
+// ============================================================
+// ROCK
+// ============================================================
+
+function createRock(
+    x,y,z,scale
+){
+
+    const rock =
+        new THREE.Mesh(
+            new THREE.DodecahedronGeometry(
+                scale,
+                0
+            ),
+            mat(0x77766f)
+        );
+
+    rock.position.set(
+        x,
+        y + scale*.4,
+        z
+    );
+
+    rock.scale.y =
+        .6;
+
+    rock.rotation.set(
+        Math.random(),
+        Math.random(),
+        Math.random()
+    );
+
+    rock.castShadow = true;
+
+    return rock;
+}
+
+
+// ============================================================
+// HOUSE SYSTEM
+// ============================================================
+
+function addBox(
+    parent,
+    sx,sy,sz,
+    x,y,z,
+    material
+){
+
+    const m =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                sx,sy,sz
+            ),
+            material
+        );
+
+    m.position.set(
+        x,y,z
+    );
+
+    m.castShadow = true;
+    m.receiveShadow = true;
+
+    parent.add(m);
+
+    return m;
+}
+
+
+function createHouse(
+    x,
+    y,
+    z,
+    type,
+    biome,
+    rotation
+){
+
+    const house =
+        new THREE.Group();
+
+    house.position.set(
+        x,y,z
+    );
+
+    house.rotation.y =
+        rotation;
+
+
+    const wall =
+        biome === "desert"
+            ? desertWall
+            : biome === "snow"
+                ? snowWall
+                : forestWall;
+
+
+    const roofMat =
+        biome === "snow"
+            ? roofSnow
+            : roof;
+
+
+    if(type === "cabin"){
+
+        addBox(
+            house,
+            13,5.5,.35,
+            0,2.75,-5.5,
+            wall
+        );
+
+        addBox(
+            house,
+            .35,5.5,11,
+            -6.5,2.75,0,
+            wall
+        );
+
+        addBox(
+            house,
+            .35,5.5,11,
+            6.5,2.75,0,
+            wall
+        );
+
+
+        // Front split around door
+        addBox(
+            house,
+            4.5,5.5,.35,
+            -4,2.75,5.5,
+            wall
+        );
+
+        addBox(
+            house,
+            4.5,5.5,.35,
+            4,2.75,5.5,
+            wall
+        );
+
+        addBox(
+            house,
+            4,1.5,.35,
+            0,4.75,5.5,
+            wall
+        );
+
+
+        // floor
+        addBox(
+            house,
+            13,.25,11,
+            0,.1,0,
+            woodFloor
+        );
+
+
+        // roof
+        const r =
+            new THREE.Mesh(
+                new THREE.ConeGeometry(
+                    9,
+                    4,
+                    4
+                ),
+                roofMat
+            );
+
+        r.scale.z=.72;
+        r.rotation.y=Math.PI/4;
+        r.position.y=7;
+        r.castShadow=true;
+        house.add(r);
+
+
+        addWindow(
+            house,
+            -3,
+            3,
+            5.7
+        );
+
+        addWindow(
+            house,
+            3,
+            3,
+            5.7
+        );
+
+        addWindow(
+            house,
+            -6.7,
+            3,
+            0,
+            Math.PI/2
+        );
+
+        addWindow(
+            house,
+            6.7,
+            3,
+            0,
+            Math.PI/2
+        );
+
+
+        addFurniture(
+            house,
+            "cabin"
+        );
+    }
+
+
+    else if(type === "barn"){
+
+        addBox(
+            house,
+            18,7,.4,
+            0,3.5,-7,
+            wall
+        );
+
+        addBox(
+            house,
+            .4,7,14,
+            -9,3.5,0,
+            wall
+        );
+
+        addBox(
+            house,
+            .4,7,14,
+            9,3.5,0,
+            wall
+        );
+
+
+        addBox(
+            house,
+            18,.3,14,
+            0,.15,0,
+            woodFloor
+        );
+
+
+        // roof
+        const r =
+            new THREE.Mesh(
+                new THREE.ConeGeometry(
+                    12,
+                    6,
+                    4
+                ),
+                roofMat
+            );
+
+        r.scale.z=.65;
+        r.rotation.y=Math.PI/4;
+        r.position.y=8.5;
+        r.castShadow=true;
+        house.add(r);
+
+
+        // barn door
+        addBox(
+            house,
+            5,5,.25,
+            0,2.5,7.1,
+            barkDark
+        );
+
+
+        addFurniture(
+            house,
+            "barn"
+        );
+    }
+
+
+    else if(type === "desert"){
+
+        addBox(
+            house,
+            15,5.5,.5,
+            0,2.75,-6,
+            wall
+        );
+
+        addBox(
+            house,
+            .5,5.5,12,
+            -7.5,2.75,0,
+            wall
+        );
+
+        addBox(
+            house,
+            .5,5.5,12,
+            7.5,2.75,0,
+            wall
+        );
+
+
+        addBox(
+            house,
+            4.8,5.5,.5,
+            -5,2.75,6,
+            wall
+        );
+
+        addBox(
+            house,
+            4.8,5.5,.5,
+            5,2.75,6,
+            wall
+        );
+
+        addBox(
+            house,
+            5,1.4,.5,
+            0,4.8,6,
+            wall
+        );
+
+
+        addBox(
+            house,
+            15,.25,12,
+            0,.1,0,
+            woodFloor
+        );
+
+
+        // flat roof
+        addBox(
+            house,
+            16,.5,13,
+            0,6,0,
+            roofMat
+        );
+
+
+        addWindow(
+            house,
+            -4,
+            3,
+            6.3
+        );
+
+        addWindow(
+            house,
+            4,
+            3,
+            6.3
+        );
+
+
+        addFurniture(
+            house,
+            "desert"
+        );
+    }
+
+
+    else if(type === "snow"){
+
+        addBox(
+            house,
+            15,6,.4,
+            0,3,-6,
+            wall
+        );
+
+        addBox(
+            house,
+            .4,6,12,
+            -7.5,3,0,
+            wall
+        );
+
+        addBox(
+            house,
+            .4,6,12,
+            7.5,3,0,
+            wall
+        );
+
+
+        addBox(
+            house,
+            5,6,.4,
+            -5,3,6,
+            wall
+        );
+
+        addBox(
+            house,
+            5,6,.4,
+            5,3,6,
+            wall
+        );
+
+        addBox(
+            house,
+            5,1.5,.4,
+            0,5.25,6,
+            wall
+        );
+
+
+        addBox(
+            house,
+            15,.25,12,
+            0,.1,0,
+            woodFloor
+        );
+
+
+        const r =
+            new THREE.Mesh(
+                new THREE.ConeGeometry(
+                    10,
+                    5,
+                    4
+                ),
+                roofSnow
+            );
+
+        r.scale.z=.7;
+        r.rotation.y=Math.PI/4;
+        r.position.y=8;
+        r.castShadow=true;
+        house.add(r);
+
+
+        addWindow(
+            house,
+            -4,
+            3.3,
+            6.2
+        );
+
+        addWindow(
+            house,
+            4,
+            3.3,
+            6.2
+        );
+
+
+        addFurniture(
+            house,
+            "snow"
+        );
+    }
+
+
+    return house;
+}
+
+
+function addWindow(
+    parent,
+    x,y,z,
+    rotation=0
+){
+
+    const w =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                2.3,
+                1.7,
+                .08
+            ),
+            glass
+        );
+
+    w.position.set(
+        x,y,z
+    );
+
+    w.rotation.y =
+        rotation;
+
+    parent.add(w);
+}
+
+
+function addFurniture(
+    house,
+    type
+){
+
+    // table
+    addBox(
+        house,
+        3,.3,2,
+        0,1.4,-.5,
+        woodFloor
+    );
+
+
+    for(
+        const x of [-1.2,1.2]
+    ){
+
+        for(
+            const z of [-.7,.7]
+        ){
+
+            addBox(
+                house,
+                .18,1.2,.18,
+                x,.7,-.5+z,
+                barkDark
+            );
+        }
+    }
+
+
+    // bed
+    addBox(
+        house,
+        3,.55,4,
+        -3.5,.55,-2.5,
+        type==="snow"
+            ? snowWall
+            : forestWall
+    );
+
+
+    // fireplace
+    if(
+        type === "cabin" ||
+        type === "snow"
+    ){
+
+        addBox(
+            house,
+            2.2,3,.8,
+            4.8,1.5,-5.2,
+            darkMetal
+        );
+    }
+}
+
+
+// ============================================================
+// RIVER
+// ============================================================
+
+function createRiverSegment(
+    cx,cz
+){
+
+    /*
+       Long thin water ribbons following
+       the procedural river function.
+    */
+
+    const group =
+        new THREE.Group();
+
+    const baseX =
+        cx*CHUNK_SIZE;
+
+    const baseZ =
+        cz*CHUNK_SIZE;
+
+
+    for(let i=0;i<12;i++){
+
+        const x =
+            baseX -
+            CHUNK_SIZE/2 +
+            i*8;
+
+        let bestZ = baseZ;
+
+        let best =
+            Infinity;
+
+        for(
+            let dz=-45;
+            dz<=45;
+            dz+=2
+        ){
+
+            const z =
+                baseZ+dz;
+
+            const v =
+                Math.abs(
+                    riverValue(x,z)
+                );
+
+            if(v<best){
+
+                best=v;
+                bestZ=z;
+            }
+        }
+
+
+        if(best < .09){
+
+            const width =
+                best < .04
+                    ? 5
+                    : 2.5;
+
+
+            const water =
+                new THREE.Mesh(
+                    new THREE.PlaneGeometry(
+                        9,
+                        width
+                    ),
+                    riverMaterial
+                );
+
+            water.rotation.x =
+                -Math.PI/2;
+
+            water.position.set(
+                x,
+                terrainHeight(
+                    x,bestZ
+                )+.05,
+                bestZ
+            );
+
+            group.add(water);
+        }
+    }
+
+
+    return group;
+}
+
+
+// ============================================================
+// NPC
+// ============================================================
+
+function createNPC(
+    x,y,z,
+    id
+){
+
+    const npc =
+        new THREE.Group();
+
+
+    // body
+    const body =
+        new THREE.Mesh(
+            new THREE.CapsuleGeometry(
+                .42,
+                1.1,
+                5,
+                8
+            ),
+            mat(
+                rand(
+                    id,
+                    3,
+                    0x303030,
+                    0xb08060,
+                    17
+                )
+            )
+        );
+
+    body.position.y =
+        1.15;
+
+    body.castShadow=true;
+
+    npc.add(body);
+
+
+    // head
+    const head =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .36,
+                12,
+                10
+            ),
+            mat(0xc58f6c)
+        );
+
+    head.position.y =
+        2.05;
+
+    head.castShadow=true;
+
+    npc.add(head);
+
+
+    // legs
+    const legMat =
+        mat(0x242936);
+
+
+    for(
+        const lx of [-.18,.18]
+    ){
+
+        const leg =
+            new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    .18,
+                    .75,
+                    .18
+                ),
+                legMat
+            );
+
+        leg.position.set(
+            lx,
+            .35,
+            0
+        );
+
+        leg.castShadow=true;
+
+        npc.add(leg);
+    }
+
+
+    npc.position.set(
+        x,y,z
+    );
+
+
+    npc.userData = {
+        id,
+        speed:
+            rand(
+                id,
+                4,
+                .6,
+                1.5
+            ),
+        direction:
+            rand(
+                id,
+                5,
+                0,
+                Math.PI*2
+            ),
+        timer:
+            rand(
+                id,
+                6,
+                1,
+                8
+            )
+    };
+
+
+    scene.add(npc);
+
+    npcs.push(npc);
+
+    generatedNPCIds.add(id);
+
+    return npc;
+}
+
+
+// ============================================================
+// CHUNK GENERATION
+// ============================================================
+
+function generateChunk(
+    cx,
+    cz
+){
+
+    const key =
+        `${cx},${cz}`;
+
+    if(chunks.has(key))
+        return;
+
+
+    const chunk =
+        new THREE.Group();
+
+    const baseX =
+        cx*CHUNK_SIZE;
+
+    const baseZ =
+        cz*CHUNK_SIZE;
+
+
+    // --------------------------------------------------------
+    // TERRAIN
+    // --------------------------------------------------------
+
+    const geo =
+        new THREE.PlaneGeometry(
+            CHUNK_SIZE,
+            CHUNK_SIZE,
+            20,
+            20
+        );
+
+    geo.rotateX(-Math.PI/2);
+
+
+    const pos =
+        geo.attributes.position;
+
+
+    for(
+        let i=0;
+        i<pos.count;
+        i++
+    ){
+
+        const lx =
+            pos.getX(i);
+
+        const lz =
+            pos.getZ(i);
+
+        const wx =
+            baseX+lx;
+
+        const wz =
+            baseZ+lz;
+
+        pos.setY(
+            i,
+            terrainHeight(
+                wx,wz
+            )
+        );
+    }
+
+
+    geo.computeVertexNormals();
+
+
+    const centerBiome =
+        biomeAt(
+            baseX,
+            baseZ
+        );
+
+
+    const ground =
+        new THREE.Mesh(
+            geo,
+            centerBiome === "desert"
+                ? desertGround
+                : centerBiome === "snow"
+                    ? snowGround
+                    : forestGround
+        );
+
+    ground.receiveShadow=true;
+
+    chunk.add(ground);
+
+
+    // --------------------------------------------------------
+    // RIVER
+    // --------------------------------------------------------
+
+    chunk.add(
+        createRiverSegment(
+            cx,cz
+        )
+    );
+
+
+    // --------------------------------------------------------
+    // VEGETATION
+    // --------------------------------------------------------
+
+    const count =
+        centerBiome === "desert"
+            ? 15
+            : centerBiome === "snow"
+                ? 20
+                : 38;
+
+
+    for(
+        let i=0;
+        i<count;
+        i++
+    ){
+
+        const sx =
+            cx*1000 +
+            i*31 +
+            11;
+
+        const sz =
+            cz*1000 +
+            i*73 +
+            19;
+
+
+        const x =
+            baseX +
+            rand(
+                sx,
+                sz,
+                -46,
+                46,
+                1
+            );
+
+        const z =
+            baseZ +
+            rand(
+                sz,
+                sx,
+                -46,
+                46,
+                2
+            );
+
+
+        if(
+            Math.abs(x)<18 &&
+            Math.abs(z)<18
+        ) continue;
+
+
+        const y =
+            terrainHeight(
+                x,z
+            );
+
+
+        if(isRiver(x,z))
+            continue;
+
+
+        if(
+            centerBiome === "desert"
+        ){
+
+            if(
+                hash(sx,sz,7) > .3
+            ){
+
+                chunk.add(
+                    createCactus(
+                        x,y,z,
+                        rand(
+                            sx,
+                            sz,
+                            .6,
+                            1.7,
+                            8
+                        )
+                    )
+                );
+
+            }else{
+
+                chunk.add(
+                    createRock(
+                        x,y,z,
+                        rand(
+                            sx,
+                            sz,
+                            .3,
+                            1.2,
+                            9
+                        )
+                    )
+                );
+            }
+
+        }
+
+        else if(
+            centerBiome === "snow"
+        ){
+
+            chunk.add(
+                createPineTree(
+                    x,y,z,
+                    rand(
+                        sx,
+                        sz,
+                        .7,
+                        1.6,
+                        11
+                    ),
+                    true
+                )
+            );
+
+        }
+
+        else{
+
+            if(
+                hash(sx,sz,14) > .35
+            ){
+
+                chunk.add(
+                    createOakTree(
+                        x,y,z,
+                        rand(
+                            sx,
+                            sz,
+                            .65,
+                            1.35,
+                            12
+                        )
+                    )
+                );
+
+            }else{
+
+                chunk.add(
+                    createPineTree(
+                        x,y,z,
+                        rand(
+                            sx,
+                            sz,
+                            .7,
+                            1.5,
+                            13
+                        )
+                    )
+                );
+            }
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // HOUSES
+    // --------------------------------------------------------
+
+    const houseChance =
+        hash(
+            cx+5000,
+            cz-5000,
+            50
+        );
+
+
+    if(
+        houseChance > .62
+    ){
+
+        const hx =
+            baseX +
+            rand(
+                cx,
+                cz,
+                -25,
+                25,
+                80
+            );
+
+        const hz =
+            baseZ +
+            rand(
+                cz,
+                cx,
+                -25,
+                25,
+                81
+            );
+
+
+        if(!isRiver(hx,hz)){
+
+            const typeRoll =
+                hash(
+                    cx,
+                    cz,
+                    82
+                );
+
+
+            let type;
+
+
+            if(
+                centerBiome === "desert"
+            ){
+
+                type="desert";
+
+            }else if(
+                centerBiome === "snow"
+            ){
+
+                type="snow";
+
+            }else{
+
+                type =
+                    typeRoll>.55
+                        ? "barn"
+                        : "cabin";
+            }
+
+
+            const house =
+                createHouse(
+                    hx,
+                    terrainHeight(hx,hz),
+                    hz,
+                    type,
+                    centerBiome,
+                    rand(
+                        cx,
+                        cz,
+                        0,
+                        Math.PI*2,
+                        83
+                    )
+                );
+
+
+            chunk.add(house);
+
+
+            // NPC near house
+            if(
+                hash(
+                    cx,
+                    cz,
+                    90
+                )>.45
+            ){
+
+                const npcId =
+                    `${cx}:${cz}:npc`;
+
+
+                if(
+                    !generatedNPCIds.has(npcId)
+                ){
+
+                    createNPC(
+                        hx+
+                        rand(
+                            cx,
+                            cz,
+                            -8,
+                            8,
+                            91
+                        ),
+
+                        terrainHeight(
+                            hx,hz
+                        ),
+
+                        hz+
+                        rand(
+                            cz,
+                            cx,
+                            -8,
+                            8,
+                            92
+                        ),
+
+                        npcId
+                    );
+                }
+            }
+        }
+    }
+
+
+    // --------------------------------------------------------
+    // EXTRA NPC
+    // --------------------------------------------------------
+
+    if(
+        hash(cx,cz,99)>.75
+    ){
+
+        const nx =
+            baseX+
+            rand(
+                cx,
+                cz,
+                -35,
+                35,
+                100
+            );
+
+        const nz =
+            baseZ+
+            rand(
+                cz,
+                cx,
+                -35,
+                35,
+                101
+            );
+
+
+        const id =
+            `${cx}:${cz}:wanderer`;
+
+
+        if(
+            !generatedNPCIds.has(id)
+        ){
+
+            createNPC(
+                nx,
+                terrainHeight(nx,nz),
+                nz,
+                id
+            );
+        }
+    }
+
+
+    scene.add(chunk);
+
+    chunks.set(
+        key,
+        chunk
+    );
+}
+
+
+// ============================================================
+// CHUNK UNLOADING
+// ============================================================
+
+function disposeObject(
+    object
+){
+
+    object.traverse(
+        child=>{
+
+            if(child.geometry)
+                child.geometry.dispose();
+
+            if(child.material){
+
+                if(
+                    Array.isArray(
+                        child.material
+                    )
+                ){
+
+                    child.material
+                        .forEach(
+                            m=>m.dispose()
+                        );
+
+                }else{
+
+                    child.material.dispose();
+                }
+            }
+        }
+    );
+}
+
+
+function updateChunks(){
+
+    const pcx =
+        Math.floor(
+            camera.position.x /
+            CHUNK_SIZE
+        );
+
+    const pcz =
+        Math.floor(
+            camera.position.z /
+            CHUNK_SIZE
+        );
+
+
+    for(
+        let x=pcx-VIEW_DISTANCE;
+        x<=pcx+VIEW_DISTANCE;
+        x++
+    ){
+
+        for(
+            let z=pcz-VIEW_DISTANCE;
+        z<=pcz+VIEW_DISTANCE;
+        z++
+        ){
+
+            generateChunk(
+                x,z
+            );
+        }
+    }
+
+
+    for(
+        const [key,chunk]
+        of chunks
+    ){
+
+        const [cx,cz] =
+            key
+                .split(",")
+                .map(Number);
+
+
+        if(
+            Math.max(
+                Math.abs(cx-pcx),
+                Math.abs(cz-pcz)
+            ) >
+            VIEW_DISTANCE+1
+        ){
+
+            scene.remove(chunk);
+
+            disposeObject(chunk);
+
+            chunks.delete(key);
+        }
+    }
+}
+
+
+// ============================================================
+// PLAYER MOVEMENT
+// ============================================================
+
+const keys={};
+
+document.addEventListener(
+    "keydown",
+    e=>{
+
+        keys[e.code]=true;
+
+
+        if(e.code==="KeyF")
+            toggleFlashlight();
+
+        if(e.code==="KeyL")
+            saveGame();
+
+        if(e.code==="KeyO")
+            loadGame();
+    }
+);
+
+
+document.addEventListener(
+    "keyup",
+    e=>{
+        keys[e.code]=false;
+    }
+);
+
+
+const velocity =
+    new THREE.Vector3();
+
+
+function updatePlayer(
+    delta
+){
+
+    const speed =
+        keys.ShiftLeft ||
+        keys.ShiftRight
+            ? SPRINT_SPEED
+            : WALK_SPEED;
+
+
+    let forward=0;
+    let side=0;
+
+
+    if(keys.KeyW)
+        forward+=1;
+
+    if(keys.KeyS)
+        forward-=1;
+
+    if(keys.KeyA)
+        side-=1;
+
+    if(keys.KeyD)
+        side+=1;
+
+
+    const length =
+        Math.hypot(
+            forward,
+            side
+        );
+
+
+    if(length>0){
+
+        forward/=length;
+        side/=length;
+
+
+        controls.moveForward(
+            forward *
+            speed *
+            delta
+        );
+
+        controls.moveRight(
+            side *
+            speed *
+            delta
+        );
+    }
+
+
+    // terrain collision
+    const ground =
+        terrainHeight(
+            camera.position.x,
+            camera.position.z
+        );
+
+
+    const desired =
+        ground +
+        PLAYER_HEIGHT;
+
+
+    camera.position.y +=
+        (
+            desired -
+            camera.position.y
+        ) *
+        Math.min(
+            1,
+            delta*10
+        );
+}
+
+
+// ============================================================
+// NPC UPDATE
+// ============================================================
+
+function updateNPCs(delta){
+
+    for(
+        const npc of npcs
+    ){
+
+        npc.userData.timer -= delta;
+
+
+        if(
+            npc.userData.timer<=0
+        ){
+
+            npc.userData.timer =
+                rand(
+                    npc.userData.id.length,
+                    Math.floor(
+                        npc.position.x
+                    ),
+                    2,
+                    8,
+                    121
+                );
+
+            npc.userData.direction =
+                rand(
+                    Math.floor(
+                        npc.position.x
+                    ),
+                    Math.floor(
+                        npc.position.z
+                    ),
+                    0,
+                    Math.PI*2,
+                    122
+                );
+        }
+
+
+        const dir =
+            npc.userData.direction;
+
+        const speed =
+            npc.userData.speed;
+
+
+        npc.position.x +=
+            Math.sin(dir) *
+            speed *
+            delta;
+
+        npc.position.z +=
+            Math.cos(dir) *
+            speed *
+            delta;
+
+
+        npc.position.y =
+            terrainHeight(
+                npc.position.x,
+                npc.position.z
+            );
+
+
+        npc.rotation.y =
+            dir;
+
+
+        const body =
+            npc.children[0];
+
+        if(body){
+
+            body.position.y =
+                1.15 +
+                Math.sin(
+                    performance.now()*.006
+                )*.025;
+        }
+    }
+}
+
+
+// ============================================================
+// DAY/NIGHT
+// ============================================================
+
+function updateDayNight(
+    delta
+){
+
+    worldTime +=
+        delta*.35;
+
+
+    if(worldTime>=24)
+        worldTime-=24;
+
+
+    /*
+        0  = midnight
+        6  = sunrise
+        12 = noon
+        18 = sunset
+        24 = midnight
+    */
+
+    const angle =
+        (
+            worldTime/24
+        ) *
+        Math.PI*2;
+
+
+    const sunY =
+        Math.sin(
+            angle -
+            Math.PI/2
+        );
+
+
+    const sunX =
+        Math.cos(angle);
+
+
+    sun.position.set(
+        sunX*250,
+        sunY*250,
+        80
+    );
+
+
+    const daylight =
+        THREE.MathUtils.clamp(
+            sunY*.9+.25,
+            .05,
+            1
+        );
+
+
+    sun.intensity =
+        daylight*3;
+
+
+    skyLight.intensity =
+        .15 +
+        daylight*1.5;
+
+
+    const dayColor =
+        new THREE.Color(
+            0x86b9dc
+        );
+
+    const nightColor =
+        new THREE.Color(
+            0x071226
+        );
+
+
+    scene.background =
+        nightColor.clone().lerp(
+            dayColor,
+            daylight
+        );
+
+
+    scene.fog.color =
+        scene.background;
+
+
+    renderer.toneMappingExposure =
+        .35 +
+        daylight*.8;
+
+
+    const hours =
+        Math.floor(worldTime);
+
+    const minutes =
+        Math.floor(
+            (worldTime-hours)*60
+        );
+
+
+    document.getElementById(
+        "info"
+    ).innerHTML =
+        `<br>Biome: ${
+            biomeAt(
+                camera.position.x,
+                camera.position.z
+            ).toUpperCase()
+        }<br>`+
+        `Time: ${
+            String(hours).padStart(2,"0")
+        }:${
+            String(minutes).padStart(2,"0")
+        }<br>`+
+        `Position: ${
+            Math.floor(camera.position.x)
+        }, ${
+            Math.floor(camera.position.z)
+        }`;
+}
+
+
+// ============================================================
+// FLASHLIGHT
+// ============================================================
+
+function toggleFlashlight(){
+
+    flashlightOn =
+        !flashlightOn;
+
+    flashlight.intensity =
+        flashlightOn
+            ? 160
+            : 0;
+
+    showStatus(
+        flashlightOn
+            ? "FLASHLIGHT ON"
+            : "FLASHLIGHT OFF"
+    );
+}
+
+
+// ============================================================
+// AUDIO
+// ============================================================
+
+let audioContext=null;
+let ambientGain=null;
+let audioStarted=false;
+
+
+function startAudio(){
+
+    if(audioStarted)
+        return;
+
+    audioStarted=true;
+
+
+    audioContext =
+        new (
+            window.AudioContext ||
+            window.webkitAudioContext
+        )();
+
+
+    ambientGain =
+        audioContext.createGain();
+
+    ambientGain.gain.value=.025;
+
+    ambientGain.connect(
+        audioContext.destination
+    );
+
+
+    // Simple non-positional ambient sound
+    const oscillator =
+        audioContext.createOscillator();
+
+    oscillator.type="sine";
+
+    oscillator.frequency.value=110;
+
+    oscillator.connect(
+        ambientGain
+    );
+
+    oscillator.start();
+
+
+    // second subtle tone
+    const osc2 =
+        audioContext.createOscillator();
+
+    osc2.type="triangle";
+
+    osc2.frequency.value=165;
+
+    const gain2 =
+        audioContext.createGain();
+
+    gain2.gain.value=.008;
+
+    osc2.connect(gain2);
+
+    gain2.connect(
+        audioContext.destination
+    );
+
+    osc2.start();
+}
+
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+
+const SAVE_KEY =
+    "infinite_frontier_save_v1";
+
+
+function saveGame(){
+
+    const save = {
+
+        x:
+            camera.position.x,
+
+        y:
+            camera.position.y,
+
+        z:
+            camera.position.z,
+
+        rotationY:
+            camera.rotation.y,
+
+        rotationX:
+            camera.rotation.x,
+
+        worldTime,
+
+        flashlightOn,
+
+        seed:
+            WORLD_SEED
+    };
+
+
+    localStorage.setItem(
+        SAVE_KEY,
+        JSON.stringify(save)
+    );
+
+
+    showStatus(
+        "GAME SAVED"
+    );
+}
+
+
+function loadGame(){
+
+    const raw =
+        localStorage.getItem(
+            SAVE_KEY
+        );
+
+
+    if(!raw){
+
+        showStatus(
+            "NO SAVE FOUND"
+        );
+
+        return;
+    }
+
+
+    try{
+
+        const save =
+            JSON.parse(raw);
+
+
+        camera.position.set(
+            save.x,
+            save.y,
+            save.z
+        );
+
+
+        camera.rotation.y =
+            save.rotationY || 0;
+
+        camera.rotation.x =
+            save.rotationX || 0;
+
+
+        worldTime =
+            save.worldTime ??
+            8;
+
+
+        flashlightOn =
+            !!save.flashlightOn;
+
+
+        flashlight.intensity =
+            flashlightOn
+                ? 160
+                : 0;
+
+
+        updateChunks();
+
+
+        showStatus(
+            "GAME LOADED"
+        );
+
+    }catch(e){
+
+        showStatus(
+            "SAVE FILE CORRUPTED"
+        );
+    }
+}
+
+
+// ============================================================
+// STATUS MESSAGE
+// ============================================================
+
+let statusTimer=null;
+
+
+function showStatus(
+    text
+){
+
+    const el =
+        document.getElementById(
+            "status"
+        );
+
+    el.textContent=text;
+
+    el.style.opacity=1;
+
+
+    clearTimeout(
+        statusTimer
+    );
+
+
+    statusTimer =
+        setTimeout(
+            ()=>{
+                el.style.opacity=0;
+            },
+            1800
+        );
+}
+
+
+// ============================================================
+// START GAME
+// ============================================================
+
+document
+    .getElementById("enter")
+    .onclick=()=>{
+
+        startAudio();
+
+        controls.lock();
+
+    };
+
+
+document
+    .getElementById("loadStart")
+    .onclick=()=>{
+
+        startAudio();
+
+        loadGame();
+
+        controls.lock();
+
+    };
+
+
+controls.addEventListener(
+    "lock",
+    ()=>{
+
+        gameStarted=true;
+
+        document
+            .getElementById("start")
+            .style.display="none";
+    }
+);
+
+
+controls.addEventListener(
+    "unlock",
+    ()=>{
+
+        document
+            .getElementById("start")
+            .style.display="flex";
+    }
+);
+
+
+// ============================================================
+// RESIZE
+// ============================================================
+
+window.addEventListener(
+    "resize",
+    ()=>{
+
+        camera.aspect =
+            innerWidth/
+            innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            innerWidth,
+            innerHeight
+        );
+    }
+);
+
+
+// ============================================================
+// INITIAL WORLD
+// ============================================================
+
+generateChunk(0,0);
+
+generateChunk(1,0);
+generateChunk(-1,0);
+generateChunk(0,1);
+generateChunk(0,-1);
+
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+
+function animate(){
+
+    requestAnimationFrame(
+        animate
+    );
+
+
+    const now =
+        performance.now();
+
+    const delta =
+        Math.min(
+            (now-lastTime)/1000,
+            .05
+        );
+
+    lastTime=now;
+
+
+    if(gameStarted){
+
+        updatePlayer(delta);
+
+        updateChunks();
+
+        updateNPCs(delta);
+
+        updateDayNight(delta);
+    }
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+}
+
+
+animate();
+
+</script>
+</body>
+</html>
